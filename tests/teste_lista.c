@@ -217,6 +217,52 @@ static void teste_dano_em_area(void)
     lista_destruir(lista);
 }
 
+static void teste_dano_de_contato(void)
+{
+    ListaInimigos *lista = lista_criar();
+    Vetor2 jogador = { 0, 0 };
+    Inimigo fraco = inimigo_em(10);
+    Inimigo forte = inimigo_em(12);
+
+    printf("dano de contato\n");
+    fraco.dano_contato = 3.0f;
+    forte.dano_contato = 8.0f;
+    conferir(lista_dano_de_contato(lista, jogador, 5.0f) == 0.0f, "lista vazia: dano 0");
+    lista_inserir_fim(lista, fraco);
+    lista_inserir_fim(lista, forte);
+    conferir(lista_dano_de_contato(lista, jogador, 7.0f) == 8.0f, "encostando: maior dano");
+    conferir(lista_dano_de_contato(lista, jogador, 0.0f) == 0.0f, "longe: dano 0");
+    lista_destruir(lista);
+}
+
+static void teste_atirador(void)
+{
+    ListaInimigos *lista = lista_criar();
+    Vetor2 jogador = { 0, 0 };
+    Inimigo mago = inimigo_em(100);
+    Projetil tiros[4];
+
+    printf("inimigo atirador\n");
+    mago.distancia_ataque = 80.0f;
+    mago.intervalo_tiro = 1.0f;
+    mago.tempo_ate_tiro = 1.0f;
+    mago.dano_tiro = 7.0f;
+    lista_inserir_fim(lista, mago);
+
+    lista_mover_todos(lista, jogador, 1.0f);
+    conferir(lista->inicio->dados.posicao.x == 90.0f, "longe: continua andando");
+    lista_mover_todos(lista, jogador, 1.0f);
+    lista->inicio->dados.posicao.x = 80.0f;
+    lista_mover_todos(lista, jogador, 1.0f);
+    conferir(lista->inicio->dados.posicao.x == 80.0f, "na distancia de ataque: para");
+
+    conferir(lista_coletar_tiros(lista, jogador, 0.5f, tiros, 4) == 0, "ainda recarregando");
+    conferir(lista_coletar_tiros(lista, jogador, 0.6f, tiros, 4) == 1, "recarregou: atira");
+    conferir(tiros[0].dano == 7.0f && tiros[0].velocidade.x < 0.0f, "tiro vai para o heroi");
+    conferir(lista_coletar_tiros(lista, jogador, 0.1f, tiros, 4) == 0, "nao atira em seguida");
+    lista_destruir(lista);
+}
+
 int main(void)
 {
     teste_inserir_e_contar();
@@ -227,6 +273,8 @@ int main(void)
     teste_mover();
     teste_projetil();
     teste_dano_em_area();
+    teste_dano_de_contato();
+    teste_atirador();
 
     printf("\n%d conferencias, %d falhas\n", total_conferencias, total_falhas);
     return total_falhas == 0 ? 0 : 1;

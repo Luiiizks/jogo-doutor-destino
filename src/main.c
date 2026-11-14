@@ -1,98 +1,210 @@
 /* main.c - ponto de entrada do jogo.
  * Abre a janela, controla a câmera e a máquina de estados das telas
- * (menu, como jogar, jogando). */
-
-#include <math.h>
+ * (menu, jogando, pausa, level-up, fim). */
 
 #include "raylib.h"
 #include "config.h"
+#include "desenho.h"
+#include "imagens.h"
 #include "interface.h"
 #include "jogador.h"
+#include "partida.h"
 
 typedef enum {
     TELA_MENU,
     TELA_COMO_JOGAR,
-    TELA_JOGANDO
+    TELA_JOGANDO,
+    TELA_PAUSA,
+    TELA_LEVEL_UP,
+    TELA_DERROTA,
+    TELA_MUNDO_CONCLUIDO
 } Tela;
 
-/* Desenha o chão como uma grade, só na parte visível pela câmera. */
-static void desenhar_chao(Camera2D camera)
-{
-    int inicio_x = (int)floorf((camera.target.x - LARGURA_JANELA / 2.0f)
-                               / TAMANHO_QUADRADO_CHAO) * TAMANHO_QUADRADO_CHAO;
-    int inicio_y = (int)floorf((camera.target.y - ALTURA_JANELA / 2.0f)
-                               / TAMANHO_QUADRADO_CHAO) * TAMANHO_QUADRADO_CHAO;
-    int x;
-    int y;
+/* Tudo que o loop principal precisa lembrar entre um quadro e outro. */
+typedef struct {
+    Tela tela;
+    int opcao;                          /* botão destacado no menu atual */
+    int sair;
+    Partida partida;
+    Camera2D camera;
+    Imagens imagens;
+    int escolhas[OPCOES_LEVEL_UP];      /* melhorias sorteadas no level-up */
+    int qtd_escolhas;
+} Jogo;
 
-    for (x = inicio_x; x <= camera.target.x + LARGURA_JANELA / 2; x += TAMANHO_QUADRADO_CHAO) {
-        for (y = inicio_y; y <= camera.target.y + ALTURA_JANELA / 2;
-             y += TAMANHO_QUADRADO_CHAO) {
-            DrawRectangleLines(x, y, TAMANHO_QUADRADO_CHAO, TAMANHO_QUADRADO_CHAO,
-                               (Color){ 40, 36, 58, 255 });
+/* Começa uma partida nova com o primeiro personagem e o primeiro mundo. */
+static void iniciar_partida(Jogo *jogo)
+{
+    if (partida_iniciar(&jogo->partida, 0, 0)) {
+        jogo->tela = TELA_JOGANDO;
+    } else {
+        jogo->tela = TELA_MENU;     /* faltou memória: volta ao menu em vez de travar */
+    }
+    jogo->opcao = 0;
+}
+
+/* Se o herói juntou XP, sorteia as melhorias e abre a tela de level-up. */
+static void verificar_level_up(Jogo *jogo)
+{
+    Jogador *jogador = &jogo->partida.jogador;
+
+    if (!jogador_pode_subir_nivel(jogador)) {
+        return;
+    }
+    jogo->qtd_escolhas = jogador_sortear_upgrades(jogador, jogo->escolhas);
+    if (jogo->qtd_escolhas == 0) {
+        jogador_subir_nivel(jogador);       /* tudo no máximo: só sobe de nível */
+        return;
+    }
+    jogo->opcao = 0;
+    jogo->tela = TELA_LEVEL_UP;
+}
+
+static void atualizar_menu(Jogo *jogo)
+{
+    int escolhida = interface_atualizar_opcoes(&jogo->opcao, TOTAL_OPCOES_MENU);
+
+    if (escolhida == OPCAO_JOGAR) {
+        iniciar_partida(jogo);
+    } else if (escolhida == OPCAO_COMO_JOGAR) {
+        jogo->tela = TELA_COMO_JOGAR;
+    } else if (escolhida == OPCAO_SAIR) {
+        jogo->sair = 1;
+    }
+}
+
+static void atualizar_jogando(Jogo *jogo)
+{
+    float dt = GetFrameTime();
+    ResultadoPartida resultado;
+
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+        jogo->opcao = 0;
+        jogo->tela = TELA_PAUSA;
+        return;
+    }
+    if (dt > DT_MAXIMO) {
+        dt = DT_MAXIMO;
+    }
+    resultado = partida_atualizar(&jogo->partida, dt);
+    jogo->camera.target = (Vector2){ jogo->partida.jogador.posicao.x,
+                                     jogo->partida.jogador.posicao.y };
+
+    if (resultado == PARTIDA_DERROTA) {
+        jogo->opcao = 0;
+        jogo->tela = TELA_DERROTA;
+    } else if (resultado == PARTIDA_MUNDO_CONCLUIDO) {
+        jogo->opcao = 0;
+        jogo->tela = TELA_MUNDO_CONCLUIDO;
+    } else {
+        verificar_level_up(jogo);
+    }
+}
+
+static void atualizar_pausa(Jogo *jogo)
+{
+    int escolhida = interface_atualizar_opcoes(&jogo->opcao, TOTAL_OPCOES_PAUSA);
+
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
+        escolhida = OPCAO_PAUSA_CONTINUAR;
+    }
+    if (escolhida == OPCAO_PAUSA_CONTINUAR) {
+        jogo->tela = TELA_JOGANDO;
+    } else if (escolhida == OPCAO_PAUSA_MENU) {
+        partida_encerrar(&jogo->partida);
+        jogo->opcao = 0;
+        jogo->tela = TELA_MENU;
+    }
+}
+
+static void atualizar_level_up(Jogo *jogo)
+{
+    Jogador *jogador = &jogo->partida.jogador;
+    int escolhida = interface_atualizar_level_up(&jogo->opcao, jogo->qtd_escolhas);
+
+    if (escolhida >= 0) {
+        jogador_aplicar_upgrade(jogador, (TipoUpgrade)jogo->escolhas[escolhida]);
+        jogador_subir_nivel(jogador);
+        jogo->tela = TELA_JOGANDO;
+    }
+}
+
+/* Derrota e mundo concluído têm os mesmos botões: jogar de novo ou voltar ao menu. */
+static void atualizar_fim(Jogo *jogo)
+{
+    int escolhida = interface_atualizar_opcoes(&jogo->opcao, TOTAL_OPCOES_FIM);
+
+    if (escolhida == OPCAO_FIM_JOGAR_DE_NOVO) {
+        iniciar_partida(jogo);
+    } else if (escolhida == OPCAO_FIM_MENU) {
+        partida_encerrar(&jogo->partida);
+        jogo->opcao = 0;
+        jogo->tela = TELA_MENU;
+    }
+}
+
+static void atualizar(Jogo *jogo)
+{
+    if (jogo->tela == TELA_MENU) {
+        atualizar_menu(jogo);
+    } else if (jogo->tela == TELA_COMO_JOGAR) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
+            jogo->tela = TELA_MENU;
+        }
+    } else if (jogo->tela == TELA_JOGANDO) {
+        atualizar_jogando(jogo);
+    } else if (jogo->tela == TELA_PAUSA) {
+        atualizar_pausa(jogo);
+    } else if (jogo->tela == TELA_LEVEL_UP) {
+        atualizar_level_up(jogo);
+    } else {
+        atualizar_fim(jogo);
+    }
+}
+
+static void desenhar(const Jogo *jogo)
+{
+    if (jogo->tela == TELA_MENU) {
+        interface_desenhar_menu_principal(jogo->opcao);
+    } else if (jogo->tela == TELA_COMO_JOGAR) {
+        interface_desenhar_como_jogar();
+    } else {
+        /* Todas as outras telas mostram a partida ao fundo. */
+        desenho_partida(&jogo->partida, &jogo->imagens, jogo->camera);
+        if (jogo->tela == TELA_PAUSA) {
+            interface_desenhar_pausa(jogo->opcao);
+        } else if (jogo->tela == TELA_LEVEL_UP) {
+            interface_desenhar_level_up(&jogo->partida.jogador, jogo->escolhas,
+                                        jogo->qtd_escolhas, jogo->opcao);
+        } else if (jogo->tela == TELA_DERROTA) {
+            interface_desenhar_derrota(jogo->opcao);
+        } else if (jogo->tela == TELA_MUNDO_CONCLUIDO) {
+            interface_desenhar_mundo_concluido(jogo->opcao);
         }
     }
 }
 
-/* Desenha o mundo (chão e herói) com a câmera seguindo o herói. */
-static void desenhar_jogo(const Jogador *jogador, Camera2D camera)
-{
-    ClearBackground((Color){ 24, 22, 36, 255 });
-
-    BeginMode2D(camera);
-    desenhar_chao(camera);
-    DrawCircle((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->raio, SKYBLUE);
-    EndMode2D();
-
-    DrawText("ESC: voltar ao menu", 20, 20, 20, LIGHTGRAY);
-    DrawFPS(20, ALTURA_JANELA - 40);
-}
-
 int main(void)
 {
-    Tela tela = TELA_MENU;
-    int opcao_menu = OPCAO_JOGAR;
-    int sair = 0;
-    Jogador jogador = jogador_criar();
-    Camera2D camera = { 0 };
+    Jogo jogo = { 0 };
 
     InitWindow(LARGURA_JANELA, ALTURA_JANELA, TITULO_JOGO);
     SetTargetFPS(FPS_ALVO);
     SetExitKey(KEY_NULL);    /* ESC não fecha a janela direto: usamos ele nas telas */
 
-    camera.offset = (Vector2){ LARGURA_JANELA / 2.0f, ALTURA_JANELA / 2.0f };
-    camera.zoom = 1.0f;
+    imagens_carregar(&jogo.imagens);
+    jogo.camera.offset = (Vector2){ LARGURA_JANELA / 2.0f, ALTURA_JANELA / 2.0f };
+    jogo.camera.zoom = 1.0f;
 
-    while (!sair && !WindowShouldClose()) {
+    while (!jogo.sair && !WindowShouldClose()) {
+        atualizar(&jogo);
         BeginDrawing();
-        if (tela == TELA_MENU) {
-            int escolhida = interface_atualizar_menu(&opcao_menu);
-
-            if (escolhida == OPCAO_JOGAR) {
-                jogador = jogador_criar();
-                tela = TELA_JOGANDO;
-            } else if (escolhida == OPCAO_COMO_JOGAR) {
-                tela = TELA_COMO_JOGAR;
-            } else if (escolhida == OPCAO_SAIR) {
-                sair = 1;
-            }
-            interface_desenhar_menu(opcao_menu);
-        } else if (tela == TELA_COMO_JOGAR) {
-            if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
-                tela = TELA_MENU;
-            }
-            interface_desenhar_como_jogar();
-        } else {
-            if (IsKeyPressed(KEY_ESCAPE)) {
-                tela = TELA_MENU;
-            }
-            jogador_atualizar(&jogador, GetFrameTime());
-            camera.target = (Vector2){ jogador.posicao.x, jogador.posicao.y };
-            desenhar_jogo(&jogador, camera);
-        }
+        desenhar(&jogo);
         EndDrawing();
     }
 
+    partida_encerrar(&jogo.partida);
+    imagens_descarregar(&jogo.imagens);
     CloseWindow();
     return 0;
 }

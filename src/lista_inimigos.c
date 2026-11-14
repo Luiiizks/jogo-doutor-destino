@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include "config.h"
 #include "lista_inimigos.h"
 
 /* Distância ao quadrado entre dois pontos. Evita a raiz quadrada (mais barato) e
@@ -126,11 +127,62 @@ void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt)
         float distancia = sqrtf(diferenca_x * diferenca_x + diferenca_y * diferenca_y);
         float passo = atual->dados.velocidade * dt;
 
-        if (distancia > 0.001f) {    /* evita dividir por zero em cima do herói */
+        /* Inimigo à distância para de andar quando chega perto o bastante para atirar. */
+        int parou_para_atirar = atual->dados.distancia_ataque > 0.0f
+                                && distancia <= atual->dados.distancia_ataque;
+
+        if (distancia > 0.001f && !parou_para_atirar) {   /* evita dividir por zero */
             atual->dados.posicao.x += diferenca_x / distancia * passo;
             atual->dados.posicao.y += diferenca_y / distancia * passo;
         }
     }
+}
+
+/* Monta um tiro que sai de "origem" em direção ao herói. */
+static Projetil montar_tiro(Vetor2 origem, Vetor2 alvo, float dano)
+{
+    float diferenca_x = alvo.x - origem.x;
+    float diferenca_y = alvo.y - origem.y;
+    float distancia = sqrtf(diferenca_x * diferenca_x + diferenca_y * diferenca_y);
+    Projetil tiro = { 0 };
+
+    if (distancia < 0.001f) {
+        distancia = 1.0f;
+    }
+    tiro.posicao = origem;
+    tiro.velocidade.x = diferenca_x / distancia * VELOCIDADE_TIRO_INIMIGO;
+    tiro.velocidade.y = diferenca_y / distancia * VELOCIDADE_TIRO_INIMIGO;
+    tiro.dano = dano;
+    tiro.raio = RAIO_TIRO_INIMIGO;
+    tiro.tempo_restante = TEMPO_VIDA_TIRO_INIMIGO;
+    return tiro;
+}
+
+int lista_coletar_tiros(ListaInimigos *lista, Vetor2 posicao_jogador, float dt,
+                        Projetil tiros[], int maximo)
+{
+    NoInimigo *atual;
+    int qtd_tiros = 0;
+
+    for (atual = lista->inicio; atual != NULL; atual = atual->proximo) {
+        Inimigo *inimigo = &atual->dados;
+        float distancia;
+
+        if (inimigo->distancia_ataque <= 0.0f) {
+            continue;                                /* inimigo corpo a corpo */
+        }
+        inimigo->tempo_ate_tiro -= dt;
+        distancia = sqrtf(distancia_quadrada_entre(inimigo->posicao, posicao_jogador));
+
+        if (inimigo->tempo_ate_tiro <= 0.0f && qtd_tiros < maximo
+            && distancia <= inimigo->distancia_ataque + MARGEM_DISTANCIA_TIRO) {
+            tiros[qtd_tiros] = montar_tiro(inimigo->posicao, posicao_jogador,
+                                           inimigo->dano_tiro);
+            inimigo->tempo_ate_tiro = inimigo->intervalo_tiro;
+            qtd_tiros++;
+        }
+    }
+    return qtd_tiros;
 }
 
 /* Tira vida do inimigo. Se morreu, soma o xp e remove o nó. Devolve 1 se morreu. */
@@ -180,6 +232,25 @@ int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float da
         atual = proximo;
     }
     return atingidos;
+}
+
+float lista_dano_de_contato(const ListaInimigos *lista, Vetor2 posicao_jogador,
+                            float raio_jogador)
+{
+    const NoInimigo *atual;
+    float maior_dano = 0.0f;
+
+    for (atual = lista->inicio; atual != NULL; atual = atual->proximo) {
+        float soma_raios = atual->dados.raio + raio_jogador;
+        float distancia_quadrada = distancia_quadrada_entre(atual->dados.posicao,
+                                                            posicao_jogador);
+
+        if (distancia_quadrada <= soma_raios * soma_raios
+            && atual->dados.dano_contato > maior_dano) {
+            maior_dano = atual->dados.dano_contato;
+        }
+    }
+    return maior_dano;
 }
 
 int lista_contar(const ListaInimigos *lista)

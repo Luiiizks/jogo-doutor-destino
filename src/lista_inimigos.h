@@ -41,7 +41,8 @@ void lista_ordenar_por_distancia(ListaInimigos *lista, Vetor2 posicao_jogador);
 int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade,
                               NoInimigo *alvos[]);
 
-/* Anda com todos os inimigos em direção ao herói. O(n) */
+/* Anda com todos os inimigos em direção ao herói; os atiradores param a certa
+ * distância para atirar. O(n) */
 void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt);
 
 /* Testa um projétil contra os inimigos. Se acertar o primeiro que encontrar, aplica o
@@ -54,6 +55,16 @@ int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
  * soma o xp em *xp_ganho. Devolve quantos foram atingidos. O(n) */
 int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float dano,
                        int *xp_ganho);
+
+/* Maior dano de contato entre os inimigos que estão encostando no herói (0 se nenhum).
+ * Usado para o herói levar dano da horda. O(n) */
+float lista_dano_de_contato(const ListaInimigos *lista, Vetor2 posicao_jogador,
+                            float raio_jogador);
+
+/* Percorre os inimigos à distância: os que já chegaram perto e já recarregaram atiram
+ * no herói. Os tiros criados vão para "tiros" (até "maximo"). Devolve quantos foram. O(n) */
+int lista_coletar_tiros(ListaInimigos *lista, Vetor2 posicao_jogador, float dt,
+                        Projetil tiros[], int maximo);
 
 /* Quantidade de inimigos na lista. O(1) */
 int lista_contar(const ListaInimigos *lista);
