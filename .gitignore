@@ -1,0 +1,8 @@
+doomsday
+doomsday_debug
+teste_lista
+entrega.zip
+*.dSYM/
+.DS_Store
+.vscode/
+docs/
