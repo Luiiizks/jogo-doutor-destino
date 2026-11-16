@@ -8,6 +8,7 @@
 #include "dados.h"
 #include "desenho.h"
 #include "jogador.h"
+#include "mundos.h"
 
 #define LARGURA_BARRA_VIDA  260
 #define ALTURA_BARRA        18
@@ -43,6 +44,11 @@ static void desenhar_sprite(const Sprite *sprite, Vetor2 centro, int espelhar,
     DrawTexturePro(sprite->textura, origem, destino, pivo, 0.0f, tinta);
 }
 
+void desenho_retrato(const Sprite *sprite, Vetor2 centro, float altura)
+{
+    desenhar_sprite(sprite, centro, 0, altura, 0, WHITE);
+}
+
 /* Chão com a imagem repetida (se existir) ou uma grade simples. */
 static void desenhar_chao(Camera2D camera, const Mundo *mundo, const Sprite *imagem_chao)
 {
@@ -67,6 +73,14 @@ static void desenhar_chao(Camera2D camera, const Mundo *mundo, const Sprite *ima
     }
 }
 
+/* Altura do inimigo na tela: a da tabela, e maior se for elite. */
+static float altura_do_inimigo(const Inimigo *inimigo)
+{
+    float altura = dados_tipo_inimigo(inimigo->tipo)->altura_visual;
+
+    return inimigo->elite ? altura * ELITE_FATOR_TAMANHO : altura;
+}
+
 /* Sombra oval nos pés do personagem, para ele não parecer flutuando. */
 static void desenhar_sombra(Vetor2 centro, float altura)
 {
@@ -81,9 +95,8 @@ static void desenhar_sombras(const Partida *partida, const Imagens *imagens)
     const Jogador *jogador = &partida->jogador;
 
     for (atual = partida->inimigos->inicio; atual != NULL; atual = atual->proximo) {
-        const TipoInimigo *dados = dados_tipo_inimigo(atual->dados.tipo);
         float altura = (imagens->inimigos[atual->dados.tipo].textura.id > 0)
-                       ? dados->altura_visual : atual->dados.raio * 2.0f;
+                       ? altura_do_inimigo(&atual->dados) : atual->dados.raio * 2.0f;
 
         desenhar_sombra(atual->dados.posicao, altura);
     }
@@ -107,6 +120,22 @@ static void desenhar_numeros_dano(const Partida *partida)
         DrawText(TextFormat("%d", numero->valor), (int)numero->posicao.x,
                  (int)numero->posicao.y, 20, Fade(YELLOW, transparencia));
     }
+}
+
+/* Desenha um objeto de cenário com o "pé" dele em "base". O pé é o meio da borda de baixo da
+ * parte visível da imagem (não do quadro todo, que pode ter margem transparente). Não desenha
+ * sombra: muitas imagens já trazem a sombra delas. */
+static void desenhar_objeto(const Sprite *sprite, Vetor2 base, float altura_visual)
+{
+    float escala = altura_visual / sprite->altura_conteudo;
+    float pe_x = (sprite->conteudo.x + sprite->conteudo.width / 2.0f) * escala;
+    float pe_y = (sprite->conteudo.y + sprite->conteudo.height) * escala;
+    Rectangle origem = { 0.0f, 0.0f, (float)sprite->textura.width,
+                         (float)sprite->textura.height };
+    Rectangle destino = { roundf(base.x - pe_x), roundf(base.y - pe_y),
+                          sprite->textura.width * escala, sprite->textura.height * escala };
+
+    DrawTexturePro(sprite->textura, origem, destino, (Vector2){ 0.0f, 0.0f }, 0.0f, WHITE);
 }
 
 /* Desenha os objetos de cenário que aparecem na tela. Cada célula do mapa sorteia seu
@@ -142,11 +171,7 @@ static void desenhar_cenario(const Partida *partida, const Imagens *imagens, Cam
             sprite = &imagens->cenario[partida->mundo][objeto];
             altura = mundo->objetos[objeto].altura_visual;
             if (sprite->textura.id > 0) {
-                /* "base" é o pé do objeto; o desenho é centralizado, então sobe meia altura. */
-                Vetor2 centro = { base.x, base.y - altura / 2.0f };
-
-                desenhar_sombra(centro, altura);
-                desenhar_sprite(sprite, centro, 0, altura, 0, WHITE);
+                desenhar_objeto(sprite, base, altura);
             }
         }
     }
@@ -158,7 +183,10 @@ static Color escolher_tinta(const Inimigo *inimigo)
     if (inimigo->tempo_intangivel > 0.0f) {
         return (Color){ 255, 255, 255, 90 };
     }
-    return (inimigo->tempo_flash > 0.0f) ? (Color){ 255, 80, 80, 255 } : WHITE;
+    if (inimigo->tempo_flash > 0.0f) {
+        return (Color){ 255, 80, 80, 255 };
+    }
+    return inimigo->elite ? (Color){ 255, 220, 110, 255 } : WHITE;     /* elite = dourado */
 }
 
 /* Desenha um inimigo (imagem ou círculo). */
@@ -177,7 +205,8 @@ static void desenhar_inimigo(const Inimigo *inimigo, const Imagens *imagens,
     } else {
         DrawCircle((int)inimigo->posicao.x, (int)inimigo->posicao.y, inimigo->raio,
                    inimigo->tempo_intangivel > 0.0f ? Fade(dados->cor, 0.35f)
-                   : (inimigo->tempo_flash > 0.0f ? WHITE : dados->cor));
+                   : (inimigo->tempo_flash > 0.0f ? WHITE
+                      : (inimigo->elite ? GOLD : dados->cor)));
     }
 }
 
@@ -199,19 +228,71 @@ static void desenhar_inimigos(const Partida *partida, const Imagens *imagens,
     }
 }
 
-/* Desenha uma lista de projéteis com a imagem dada ou um círculo da cor dada. */
-static void desenhar_projeteis(const Projetil projeteis[], int quantidade,
-                               const Sprite *imagem, Color cor)
+/* Cor da gema de XP conforme o valor (azul = pouco, verde = médio, dourado = muito). */
+static Color cor_da_gema(int valor)
+{
+    if (valor <= 6) {
+        return (Color){ 120, 210, 255, 255 };
+    }
+    return (valor <= 12) ? (Color){ 120, 255, 150, 255 } : (Color){ 255, 215, 90, 255 };
+}
+
+/* Um drop no chão: imagem (se existir) ou forma simples. Flutua um pouquinho. */
+static void desenhar_drop(const Drop *drop, const Sprite *imagem, float tempo)
+{
+    Vetor2 centro = { drop->posicao.x, drop->posicao.y + 2.0f * sinf(tempo * 6.0f
+                                                                     + drop->posicao.x * 0.1f) };
+
+    if (imagem->textura.id > 0) {
+        desenhar_sprite(imagem, centro, 0, 0.0f, 0, WHITE);
+    } else if (drop->tipo == DROP_XP) {
+        DrawPoly((Vector2){ centro.x, centro.y }, 4, 9.0f, 0.0f, cor_da_gema(drop->valor));
+        DrawPolyLines((Vector2){ centro.x, centro.y }, 4, 9.0f, 0.0f, WHITE);
+    } else {
+        Color cor = (drop->tipo == DROP_IMA) ? (Color){ 230, 80, 200, 255 }
+                                             : (Color){ 230, 60, 70, 255 };
+
+        DrawCircle((int)centro.x, (int)centro.y, 10.0f, cor);
+        DrawCircleLines((int)centro.x, (int)centro.y, 12.0f, WHITE);
+        DrawText(drop->tipo == DROP_IMA ? "I" : "+", (int)centro.x - 4, (int)centro.y - 8, 16,
+                 WHITE);
+    }
+}
+
+static void desenhar_todos_os_drops(const Partida *partida, const Imagens *imagens)
 {
     int indice;
 
-    for (indice = 0; indice < quantidade; indice++) {
-        if (imagem->textura.id > 0) {
-            desenhar_sprite(imagem, projeteis[indice].posicao, 0, 0.0f, 0, WHITE);
-        } else {
-            DrawCircle((int)projeteis[indice].posicao.x, (int)projeteis[indice].posicao.y,
-                       projeteis[indice].raio, cor);
-        }
+    for (indice = 0; indice < partida->qtd_drops; indice++) {
+        desenhar_drop(&partida->drops[indice], &imagens->drops[partida->drops[indice].tipo],
+                      partida->tempo_mundo);
+    }
+}
+
+/* Desenha um projétil: imagem (se existir) ou um círculo da cor dada. */
+static void desenhar_projetil(const Projetil *projetil, const Sprite *imagem, Color cor)
+{
+    if (imagem->textura.id > 0) {
+        desenhar_sprite(imagem, projetil->posicao, 0, 0.0f, 0, WHITE);
+    } else {
+        DrawCircle((int)projetil->posicao.x, (int)projetil->posicao.y, projetil->raio, cor);
+    }
+}
+
+/* Tiros do herói (cada herói tem a sua imagem e cor) e tiros dos inimigos. */
+static void desenhar_todos_os_tiros(const Partida *partida, const Imagens *imagens)
+{
+    int indice;
+
+    for (indice = 0; indice < partida->qtd_projeteis; indice++) {
+        const Projetil *tiro = &partida->projeteis[indice];
+
+        desenhar_projetil(tiro, &imagens->projetil_heroi[tiro->personagem],
+                          dados_personagem(tiro->personagem)->cor_projetil);
+    }
+    for (indice = 0; indice < partida->qtd_tiros_inimigos; indice++) {
+        desenhar_projetil(&partida->tiros_inimigos[indice], &imagens->projetil_inimigo,
+                          (Color){ 255, 90, 90, 255 });
     }
 }
 
@@ -222,7 +303,14 @@ static void desenhar_jogador(const Jogador *jogador, const Sprite *imagem, float
                    && ((int)(jogador->tempo_invulneravel * 20.0f) % 2 == 0);
     const Personagem *dados = dados_personagem(jogador->personagem);
 
+    if (jogador->qtd_alvos > 0) {          /* anel discreto mostrando o alcance dos tiros */
+        DrawCircleLines((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->alcance,
+                        Fade(WHITE, 0.12f));
+    }
     if (jogador->efeito_pulso > 0.0f) {
+        DrawCircle((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->raio_pulso,
+                   Fade((Color){ 200, 170, 255, 255 }, 0.3f * jogador->efeito_pulso
+                                                       / DURACAO_EFEITO_PULSO));
         DrawCircleLines((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->raio_pulso,
                         (Color){ 200, 170, 255, 255 });
     }
@@ -322,7 +410,7 @@ static void desenhar_barra_chefe(const Partida *partida)
         return;
     }
     DrawText(dados->nome, posicao_x, 12, 24, RAYWHITE);
-    desenhar_barra(posicao_x, 42, largura, 22, chefe->dados.vida, dados->vida,
+    desenhar_barra(posicao_x, 42, largura, 22, chefe->dados.vida, partida->vida_chefe_maxima,
                    (Color){ 70, 190, 110, 255 });
     if (chefe->dados.tempo_intangivel > 0.0f) {
         DrawText("INTANGÍVEL", posicao_x, 68, 20, (Color){ 200, 220, 255, 255 });
@@ -333,7 +421,7 @@ static void desenhar_barra_chefe(const Partida *partida)
 static void desenhar_info_do_mundo(const Partida *partida)
 {
     const Mundo *mundo = dados_mundo(partida->mundo);
-    float tempo_restante = mundo->duracao - partida->tempo_mundo;
+    float tempo_restante = mundos_duracao(partida) - partida->tempo_mundo;
     int segundos = (int)ceilf(tempo_restante > 0.0f ? tempo_restante : 0.0f);
 
     if (mundo->arena_chefe) {
@@ -395,15 +483,13 @@ void desenho_partida(const Partida *partida, const Imagens *imagens, Camera2D ca
                         &imagens->portal);
     }
     desenhar_cenario(partida, imagens, camera, 1);    /* objetos acima do herói */
+    desenhar_todos_os_drops(partida, imagens);        /* gemas e itens no chão */
     desenhar_sombras(partida, imagens);
     desenhar_inimigos(partida, imagens, 1);          /* inimigos acima do herói */
     desenhar_jogador(jogador, &imagens->personagens[jogador->personagem], partida->tempo_mundo);
     desenhar_inimigos(partida, imagens, 0);          /* inimigos abaixo do herói */
     desenhar_cenario(partida, imagens, camera, 0);    /* objetos abaixo do herói */
-    desenhar_projeteis(partida->projeteis, partida->qtd_projeteis, &imagens->projetil_heroi,
-                       (Color){ 190, 150, 255, 255 });
-    desenhar_projeteis(partida->tiros_inimigos, partida->qtd_tiros_inimigos,
-                       &imagens->projetil_inimigo, (Color){ 255, 90, 90, 255 });
+    desenhar_todos_os_tiros(partida, imagens);
     desenhar_numeros_dano(partida);
     if (partida_eh_arena(partida)) {
         desenhar_paredes_da_arena();

@@ -7,16 +7,27 @@
 #include "lista_inimigos.h"
 #include "tipos.h"
 
+/* Modo normal ou modo rápido (demonstração, mundos mais curtos). */
+typedef enum {
+    MODO_NORMAL,
+    MODO_RAPIDO
+} ModoJogo;
+
 typedef struct {
     Jogador jogador;
     ListaInimigos *inimigos;
     Projetil projeteis[MAX_PROJETEIS];
     int qtd_projeteis;
     NumeroDano numeros_dano[MAX_NUMEROS_DANO];
+    Drop drops[MAX_DROPS];
+    int qtd_drops;
     int qtd_numeros_dano;
     float tempo_tremor;        /* segundos restantes do tremor de tela */
     Projetil tiros_inimigos[MAX_TIROS_INIMIGOS];
     int qtd_tiros_inimigos;
+    ModoJogo modo;
+    float escala_tempo;        /* 1 no modo normal; menor que 1 no modo rápido */
+    float vida_chefe_maxima;
     int mundo;                 /* índice na tabela de mundos */
     float tempo_mundo;         /* segundos desde que o mundo começou */
     float tempo_ate_spawn;
@@ -37,8 +48,8 @@ typedef enum {
     PARTIDA_MUNDO_CONCLUIDO
 } ResultadoPartida;
 
-/* Começa uma partida nova. Devolve 0 se faltar memória para a lista, 1 se deu certo. */
-int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo);
+/* Começa uma partida nova no modo pedido. Devolve 0 se faltar memória, 1 se deu certo. */
+int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo, ModoJogo modo);
 
 /* Devolve 1 se existe um mundo depois do atual na tabela de mundos. */
 int partida_tem_proximo_mundo(const Partida *partida);

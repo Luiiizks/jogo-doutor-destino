@@ -5,6 +5,7 @@
 
 #include "armas.h"
 #include "dados.h"
+#include "gemas.h"
 #include "jogador.h"
 #include "mundos.h"
 #include "partida.h"
@@ -17,11 +18,13 @@ static int preparar_mundo(Partida *partida, int indice_mundo)
     partida->qtd_projeteis = 0;
     partida->qtd_tiros_inimigos = 0;
     partida->qtd_numeros_dano = 0;
+    partida->qtd_drops = 0;
     partida->tempo_tremor = 0.0f;
     partida->mundo = indice_mundo;
     partida->tempo_mundo = 0.0f;
     partida->tempo_ate_spawn = 0.0f;
-    partida->tempo_ate_horda = INTERVALO_HORDA;
+    partida->escala_tempo = (partida->modo == MODO_RAPIDO) ? FATOR_TEMPO_RAPIDO : 1.0f;
+    partida->tempo_ate_horda = INTERVALO_HORDA * partida->escala_tempo;
     partida->hordas_ocorridas = 0;
     partida->aviso_horda = 0.0f;
     partida->portal_aberto = 0;
@@ -32,10 +35,14 @@ static int preparar_mundo(Partida *partida, int indice_mundo)
     return partida->inimigos != NULL;
 }
 
-int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo)
+int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo, ModoJogo modo)
 {
     partida_encerrar(partida);
+    partida->modo = modo;
     partida->jogador = jogador_criar(indice_personagem);
+    if (modo == MODO_RAPIDO) {
+        partida->jogador.fator_xp = FATOR_XP_RAPIDO;
+    }
     return preparar_mundo(partida, indice_mundo);
 }
 
@@ -102,6 +109,8 @@ ResultadoPartida partida_atualizar(Partida *partida, float dt)
     lista_mover_todos(partida->inimigos, jogador->posicao, dt);
     lista_ordenar_por_distancia(partida->inimigos, jogador->posicao);  /* prepara a mira */
     armas_atualizar(partida, dt);                                   /* mira usa a lista ordenada */
+    gemas_criar_das_mortes(partida);                                /* mortes viram gemas */
+    gemas_atualizar(partida, dt);                                   /* herói pega o que toca */
 
     jogador_receber_dano(jogador, lista_dano_de_contato(partida->inimigos,
                                                         jogador->posicao, jogador->raio));

@@ -29,6 +29,7 @@ ListaInimigos *lista_criar(void)
     lista->fim = NULL;
     lista->tamanho = 0;
     lista->proximo_id = 1;
+    lista->qtd_mortes = 0;
     return lista;
 }
 
@@ -103,13 +104,15 @@ void lista_ordenar_por_distancia(ListaInimigos *lista, Vetor2 posicao_jogador)
     }
 }
 
-int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade,
+int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade, float alcance,
                               NoInimigo *alvos[])
 {
     NoInimigo *atual = lista->inicio;
+    float alcance_quadrado = alcance * alcance;     /* distancia_quadrada também é ao quadrado */
     int encontrados = 0;
 
-    while (atual != NULL && encontrados < quantidade) {
+    while (atual != NULL && encontrados < quantidade
+           && atual->dados.distancia_quadrada <= alcance_quadrado) {
         alvos[encontrados] = atual;
         encontrados++;
         atual = atual->proximo;
@@ -192,21 +195,26 @@ int lista_coletar_tiros(ListaInimigos *lista, Vetor2 posicao_jogador, float dt,
     return qtd_tiros;
 }
 
-/* Tira vida do inimigo. Se morreu, soma o xp e remove o nó. Devolve 1 se morreu. */
-static int aplicar_dano(ListaInimigos *lista, NoInimigo *no, float dano, int *xp_ganho)
+/* Tira vida do inimigo. Se morreu, registra a morte (posição, xp, elite) para o jogo soltar
+ * o drop e remove o nó. Devolve 1 se morreu. */
+static int aplicar_dano(ListaInimigos *lista, NoInimigo *no, float dano)
 {
     no->dados.vida -= dano;
     if (no->dados.vida > 0.0f) {
         no->dados.tempo_flash = DURACAO_FLASH_DANO;
         return 0;
     }
-    *xp_ganho += no->dados.xp;
+    if (lista->qtd_mortes < LIMITE_MORTES) {
+        lista->mortes[lista->qtd_mortes].posicao = no->dados.posicao;
+        lista->mortes[lista->qtd_mortes].xp = no->dados.xp;
+        lista->mortes[lista->qtd_mortes].elite = no->dados.elite;
+        lista->qtd_mortes++;
+    }
     lista_remover_no(lista, no);
     return 1;
 }
 
-int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
-                               int *xp_ganho)
+int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil)
 {
     NoInimigo *atual;
 
@@ -216,15 +224,14 @@ int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
         if (atual->dados.tempo_intangivel <= 0.0f
             && distancia_quadrada_entre(atual->dados.posicao, projetil->posicao)
                <= soma_raios * soma_raios) {
-            aplicar_dano(lista, atual, projetil->dano, xp_ganho);
+            aplicar_dano(lista, atual, projetil->dano);
             return 1;
         }
     }
     return 0;
 }
 
-int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float dano,
-                       int *xp_ganho)
+int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float dano)
 {
     NoInimigo *atual = lista->inicio;
     int atingidos = 0;
@@ -237,12 +244,24 @@ int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float da
         if (atual->dados.tempo_intangivel <= 0.0f
             && distancia_quadrada_entre(atual->dados.posicao, centro)
                <= soma_raios * soma_raios) {
-            aplicar_dano(lista, atual, dano, xp_ganho);
+            aplicar_dano(lista, atual, dano);
             atingidos++;
         }
         atual = proximo;
     }
     return atingidos;
+}
+
+int lista_retirar_mortes(ListaInimigos *lista, Morte saida[], int maximo)
+{
+    int copiadas = 0;
+
+    while (copiadas < lista->qtd_mortes && copiadas < maximo) {
+        saida[copiadas] = lista->mortes[copiadas];
+        copiadas++;
+    }
+    lista->qtd_mortes = 0;
+    return copiadas;
 }
 
 float lista_dano_de_contato(const ListaInimigos *lista, Vetor2 posicao_jogador,

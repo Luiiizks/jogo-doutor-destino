@@ -20,8 +20,18 @@ Jogador jogador_criar(int indice_personagem)
     jogador.raio = 16.0f;
     jogador.dano = dados->dano;
     jogador.cadencia = dados->cadencia;
-    jogador.qtd_alvos = 1;
+    jogador.qtd_alvos = dados->qtd_alvos;
+    jogador.alcance = dados->alcance;
+    if (dados->raio_pulso > 0.0f) {            /* herói que já começa com o pulso (Hulk) */
+        jogador.raio_pulso = dados->raio_pulso;
+        jogador.dano_pulso = dados->dano_pulso;
+        jogador.intervalo_pulso = dados->intervalo_pulso;
+        jogador.tempo_ate_pulso = dados->intervalo_pulso;
+        jogador.golpes_pulso = 1;
+    }
     jogador.nivel = 1;
+    jogador.fator_xp = 1.0f;
+    jogador.raio_ima = RAIO_IMA_BASE;
     return jogador;
 }
 
@@ -76,7 +86,7 @@ void jogador_receber_dano(Jogador *jogador, float dano)
 
 int jogador_xp_para_proximo_nivel(const Jogador *jogador)
 {
-    return XP_BASE_NIVEL + XP_POR_NIVEL * jogador->nivel;
+    return (int)((XP_BASE_NIVEL + XP_POR_NIVEL * jogador->nivel) * jogador->fator_xp);
 }
 
 int jogador_pode_subir_nivel(const Jogador *jogador)
@@ -90,6 +100,12 @@ void jogador_subir_nivel(Jogador *jogador)
     jogador->nivel++;
 }
 
+/* Nível máximo de cada melhoria: a "Nova arma" só pode ser pega uma vez. */
+static int nivel_maximo_do_upgrade(int upgrade)
+{
+    return (upgrade == UPGRADE_NOVA_ARMA) ? 1 : NIVEL_MAX_UPGRADE;
+}
+
 int jogador_sortear_upgrades(const Jogador *jogador, int escolhas[])
 {
     int disponiveis[TOTAL_UPGRADES];
@@ -97,8 +113,15 @@ int jogador_sortear_upgrades(const Jogador *jogador, int escolhas[])
     int qtd_escolhidos = 0;
     int upgrade;
 
+    /* A partir do nível NIVEL_NOVA_ARMA a carta da segunda arma aparece sempre, até ser
+     * escolhida. As outras melhorias são sorteadas (sorte). */
+    if (jogador->niveis_upgrade[UPGRADE_NOVA_ARMA] == 0 && jogador->nivel >= NIVEL_NOVA_ARMA) {
+        escolhas[qtd_escolhidos] = UPGRADE_NOVA_ARMA;
+        qtd_escolhidos++;
+    }
     for (upgrade = 0; upgrade < TOTAL_UPGRADES; upgrade++) {
-        if (jogador->niveis_upgrade[upgrade] < NIVEL_MAX_UPGRADE) {
+        if (upgrade != UPGRADE_NOVA_ARMA
+            && jogador->niveis_upgrade[upgrade] < nivel_maximo_do_upgrade(upgrade)) {
             disponiveis[qtd_disponiveis] = upgrade;
             qtd_disponiveis++;
         }
@@ -116,37 +139,57 @@ int jogador_sortear_upgrades(const Jogador *jogador, int escolhas[])
     return qtd_escolhidos;
 }
 
-/* Liga ou melhora o pulso de energia conforme o nível dele. */
-static void melhorar_pulso(Jogador *jogador)
+/* Segunda arma: quem começa com tiros ganha a onda de impacto; quem começa com a onda
+ * (Hulk) ganha o arremesso de pedras. */
+static void ganhar_segunda_arma(Jogador *jogador)
 {
-    int nivel_pulso = jogador->niveis_upgrade[UPGRADE_PULSO];
-
-    jogador->raio_pulso = RAIO_PULSO_BASE + (nivel_pulso - 1) * RAIO_PULSO_POR_NIVEL;
-    jogador->dano_pulso = DANO_PULSO_BASE + (nivel_pulso - 1) * DANO_PULSO_POR_NIVEL;
-    if (nivel_pulso == 1) {
+    if (jogador->raio_pulso <= 0.0f) {
+        jogador->raio_pulso = RAIO_PULSO_BASE;
+        jogador->dano_pulso = DANO_PULSO_BASE;
+        jogador->intervalo_pulso = INTERVALO_PULSO;
         jogador->tempo_ate_pulso = INTERVALO_PULSO;
+        jogador->golpes_pulso = 1;
+    } else {
+        jogador->qtd_alvos = 1;
     }
 }
 
 void jogador_aplicar_upgrade(Jogador *jogador, TipoUpgrade upgrade)
 {
-    if (jogador->niveis_upgrade[upgrade] >= NIVEL_MAX_UPGRADE) {
+    if (jogador->niveis_upgrade[upgrade] >= nivel_maximo_do_upgrade(upgrade)) {
         return;
     }
     jogador->niveis_upgrade[upgrade]++;
 
     if (upgrade == UPGRADE_DANO) {
         jogador->dano += BONUS_DANO;
+        if (jogador->raio_pulso > 0.0f) {       /* a onda/pulso também fica mais forte */
+            jogador->dano_pulso += BONUS_DANO_PULSO;
+            jogador->raio_pulso += BONUS_RAIO_PULSO;
+        }
     } else if (upgrade == UPGRADE_CADENCIA) {
         jogador->cadencia *= FATOR_CADENCIA;
-    } else if (upgrade == UPGRADE_PROJETIL) {
-        jogador->qtd_alvos++;
+        jogador->intervalo_pulso *= FATOR_CADENCIA;
+    } else if (upgrade == UPGRADE_ALCANCE) {
+        jogador->alcance += BONUS_ALCANCE;
+        if (jogador->raio_pulso > 0.0f) {
+            jogador->raio_pulso += BONUS_RAIO_ALCANCE;
+        }
+    } else if (upgrade == UPGRADE_QUANTIDADE) {
+        if (jogador->qtd_alvos > 0) {
+            jogador->qtd_alvos++;
+        }
+        if (jogador->raio_pulso > 0.0f) {
+            jogador->golpes_pulso++;
+        }
     } else if (upgrade == UPGRADE_VELOCIDADE) {
         jogador->velocidade += BONUS_VELOCIDADE;
     } else if (upgrade == UPGRADE_VIDA) {
         jogador->vida_maxima += BONUS_VIDA;
         jogador->vida += BONUS_VIDA;
+    } else if (upgrade == UPGRADE_IMA) {
+        jogador->raio_ima += BONUS_RAIO_IMA;
     } else {
-        melhorar_pulso(jogador);
+        ganhar_segunda_arma(jogador);
     }
 }

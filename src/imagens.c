@@ -19,13 +19,16 @@ static Sprite carregar_sprite(const char *caminho, int quadros)
     imagem = LoadImage(caminho);
     /* Retângulo que contém só os pixels visíveis; usamos a altura dele para dimensionar
      * o desenho sem depender da margem transparente do PNG. */
-    sprite.altura_conteudo = GetImageAlphaBorder(imagem, 0.1f).height;
+    sprite.conteudo = GetImageAlphaBorder(imagem, 0.1f);
+    sprite.altura_conteudo = sprite.conteudo.height;
     sprite.textura = LoadTextureFromImage(imagem);
     UnloadImage(imagem);
 
     SetTextureFilter(sprite.textura, TEXTURE_FILTER_POINT);   /* mantém o pixel art nítido */
     sprite.quadros = quadros;
     if (sprite.altura_conteudo <= 0.0f) {
+        sprite.conteudo = (Rectangle){ 0.0f, 0.0f, (float)sprite.textura.width,
+                                       (float)sprite.textura.height };
         sprite.altura_conteudo = (float)sprite.textura.height;
     }
     return sprite;
@@ -55,6 +58,7 @@ void imagens_carregar(Imagens *imagens)
 
         imagens->personagens[indice] = carregar_animado(dados->arquivo_imagem,
             dados->arquivo_caminhada, dados->quadros_caminhada);
+        imagens->projetil_heroi[indice] = carregar_sprite(dados->arquivo_projetil, 1);
     }
     for (indice = 0; indice < TOTAL_TIPOS_INIMIGO; indice++) {
         const TipoInimigo *dados = dados_tipo_inimigo(indice);
@@ -72,9 +76,12 @@ void imagens_carregar(Imagens *imagens)
                 mundo->objetos[objeto].arquivo_imagem, 1);
         }
     }
-    imagens->projetil_heroi = carregar_sprite("assets/sprites/projetil_arcano.png", 1);
     imagens->projetil_inimigo = carregar_sprite("assets/sprites/projetil_inimigo.png", 1);
     imagens->portal = carregar_sprite("assets/sprites/portal.png", 1);
+    imagens->drops[DROP_XP] = carregar_sprite("assets/sprites/gema_xp.png", 1);
+    imagens->drops[DROP_IMA] = carregar_sprite("assets/sprites/item_iman.png", 1);
+    imagens->drops[DROP_CORACAO] = carregar_sprite("assets/sprites/item_coracao.png", 1);
+    imagens->fundo_menu = carregar_sprite("assets/ui/fundo_menu.png", 1);
 }
 
 /* Descarrega a textura só se ela foi carregada. */
@@ -91,6 +98,7 @@ void imagens_descarregar(Imagens *imagens)
 
     for (indice = 0; indice < dados_total_personagens(); indice++) {
         descarregar(imagens->personagens[indice]);
+        descarregar(imagens->projetil_heroi[indice]);
     }
     for (indice = 0; indice < TOTAL_TIPOS_INIMIGO; indice++) {
         descarregar(imagens->inimigos[indice]);
@@ -103,7 +111,10 @@ void imagens_descarregar(Imagens *imagens)
             descarregar(imagens->cenario[indice][objeto]);
         }
     }
-    descarregar(imagens->projetil_heroi);
     descarregar(imagens->projetil_inimigo);
     descarregar(imagens->portal);
+    for (indice = 0; indice < 3; indice++) {
+        descarregar(imagens->drops[indice]);
+    }
+    descarregar(imagens->fundo_menu);
 }

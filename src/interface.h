@@ -3,6 +3,7 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
+#include "imagens.h"
 #include "tipos.h"
 
 typedef enum {
@@ -19,6 +20,12 @@ typedef enum {
 } OpcaoPausa;
 
 typedef enum {
+    OPCAO_MODO_NORMAL,
+    OPCAO_MODO_RAPIDO,
+    TOTAL_OPCOES_MODO
+} OpcaoModo;
+
+typedef enum {
     OPCAO_FIM_JOGAR_DE_NOVO,
     OPCAO_FIM_MENU,
     TOTAL_OPCOES_FIM
@@ -28,8 +35,12 @@ typedef enum {
  * (atualizado aqui). Devolve o botão confirmado (ENTER ou clique) ou -1 se nenhum. */
 int interface_atualizar_opcoes(int *selecionada, int total);
 
-void interface_desenhar_menu_principal(int selecionada);
-void interface_desenhar_como_jogar(void);
+void interface_desenhar_menu_principal(const Imagens *imagens, int selecionada);
+void interface_desenhar_como_jogar(const Imagens *imagens);
+
+/* Seleção de herói (cartas lado a lado) e de modo de jogo (normal ou rápido). */
+void interface_desenhar_selecao_heroi(const Imagens *imagens, int selecionada);
+void interface_desenhar_selecao_modo(const Imagens *imagens, int selecionada);
 void interface_desenhar_pausa(int selecionada);
 void interface_desenhar_derrota(int selecionada);
 void interface_desenhar_vitoria(int selecionada);
@@ -38,9 +49,10 @@ void interface_desenhar_vitoria(int selecionada);
 int interface_atualizar_transicao(void);
 void interface_desenhar_transicao(const char *mundo_concluido, const char *proximo_mundo);
 
-/* Level-up: devolve o índice da melhoria escolhida (teclas 1-3, setas + ENTER ou clique)
- * ou -1 se ainda não escolheu. */
-int interface_atualizar_level_up(int *selecionada, int quantidade);
+/* Telas de cartas (level-up e seleção de herói): devolve o índice da carta escolhida (teclas
+ * 1-3, setas + ENTER ou clique) ou -1 se ainda não escolheu. "para_heroi" = 1 usa as cartas
+ * mais altas da seleção de herói. */
+int interface_atualizar_cartas(int *selecionada, int quantidade, int para_heroi);
 void interface_desenhar_level_up(const Jogador *jogador, const int escolhas[],
                                  int quantidade, int selecionada);
 

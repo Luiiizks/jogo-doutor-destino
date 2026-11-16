@@ -12,6 +12,9 @@
  * de vez em quando. */
 void mundos_atualizar(Partida *partida, float dt);
 
+/* Duração do mundo atual em segundos, já levando em conta o modo (normal ou rápido). */
+float mundos_duracao(const Partida *partida);
+
 /* Devolve 1 se o mundo terminou: nos mundos normais, o herói encostou no portal aberto;
  * na arena, o chefe já nasceu e não está mais na lista (foi derrotado). */
 int mundos_concluido(const Partida *partida);

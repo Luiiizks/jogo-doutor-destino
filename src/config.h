@@ -18,6 +18,11 @@
 #define LIMITE_INIMIGOS  250      /* máximo de inimigos em cena (o spawn para aqui) */
 #define RAIO_SPAWN       700.0f   /* distância do herói onde os inimigos nascem */
 
+/* Modo rápido (para demonstração): tudo acontece mais depressa */
+#define FATOR_TEMPO_RAPIDO       0.33f  /* duração do mundo e intervalo das hordas viram 1/3 */
+#define FATOR_XP_RAPIDO          0.7f   /* precisa de 70% do XP para subir de nível */
+#define FATOR_VIDA_CHEFE_RAPIDO  0.6f   /* o chefe tem 60% da vida */
+
 /* Troca de mundo */
 #define CURA_TROCA_MUNDO       0.5f   /* fração da vida máxima recuperada ao mudar de mundo */
 
@@ -47,7 +52,7 @@
 /* Tiros dos inimigos à distância */
 #define MAX_TIROS_INIMIGOS   100
 #define VELOCIDADE_TIRO_INIMIGO 240.0f
-#define TEMPO_VIDA_TIRO_INIMIGO 3.0f
+#define TEMPO_VIDA_TIRO_INIMIGO 2.0f
 #define RAIO_TIRO_INIMIGO    6.0f
 #define MARGEM_DISTANCIA_TIRO 30.0f   /* tolerância para considerar que já chegou à distância */
 
@@ -56,6 +61,29 @@
 #define CHANCE_OBJETO_CENARIO  40     /* % de células que têm um objeto */
 #define RAIO_LIVRE_INICIO      120.0f /* sem objetos perto de onde o herói nasce */
 #define MAX_OBJETOS_POR_MUNDO  6
+
+/* Drops: gemas de XP e itens (o XP só vale quando o herói pega no chão) */
+#define MAX_DROPS              400
+#define LIMITE_MORTES          300     /* mortes guardadas pela lista até o jogo soltar os drops */
+#define RAIO_COLETA            14.0f   /* distância extra (além do raio do herói) para pegar */
+#define RAIO_IMA_BASE          70.0f   /* gemas dentro deste raio são atraídas para o herói */
+#define BONUS_RAIO_IMA         50.0f
+#define VELOCIDADE_ATRACAO     420.0f
+#define CHANCE_DROP_COMUM      3       /* % de um inimigo comum soltar um item */
+#define CHANCE_DROP_ELITE      50      /* % de um elite soltar um item */
+#define CURA_CORACAO           0.25f   /* fração da vida máxima que o coração cura */
+
+/* Elites: versão dourada, maior e mais forte de um inimigo comum */
+#define ELITE_FATOR_VIDA       3.0f
+#define ELITE_FATOR_XP         3
+#define ELITE_FATOR_DANO       1.5f
+#define ELITE_FATOR_TAMANHO    1.25f
+#define ELITES_POR_HORDA_MIN   1
+#define ELITES_POR_HORDA_MAX   2
+
+/* Inimigos ficam mais fortes: durante o mundo e a cada mundo novo */
+#define CRESCIMENTO_VIDA_NO_MUNDO   0.4f   /* +40% de vida do começo ao fim do mundo */
+#define CRESCIMENTO_VIDA_POR_MUNDO  0.2f   /* +20% de vida a cada mundo seguinte */
 
 /* Efeitos visuais */
 #define DURACAO_FLASH_DANO     0.12f  /* inimigo fica avermelhado ao levar dano */
@@ -75,7 +103,6 @@
 #define MAX_ALVOS            8      /* máximo de projéteis por disparo */
 #define MAX_PROJETEIS        200
 #define VELOCIDADE_PROJETIL  420.0f
-#define TEMPO_VIDA_PROJETIL  2.0f
 #define RAIO_PROJETIL        5.0f
 
 /* Nível e upgrades */
@@ -87,6 +114,12 @@
 #define FATOR_CADENCIA       0.85f  /* cada nível multiplica o tempo entre disparos */
 #define BONUS_VELOCIDADE     20.0f
 #define BONUS_VIDA           20.0f
+#define BONUS_ALCANCE        60.0f  /* upgrade Alcance: distância máxima dos tiros */
+#define BONUS_RAIO_ALCANCE   15.0f  /* ...e raio da onda de impacto */
+#define BONUS_DANO_PULSO     4.0f   /* "Mais dano" também reforça o pulso/onda */
+#define BONUS_RAIO_PULSO     8.0f
+#define NIVEL_NOVA_ARMA      3      /* a partir deste nível a carta "Nova arma" é oferecida */
+#define INTERVALO_ENTRE_GOLPES 0.22f /* segundos entre os golpes seguidos da onda */
 
 /* Pulso de energia (upgrade) */
 #define INTERVALO_PULSO      3.0f

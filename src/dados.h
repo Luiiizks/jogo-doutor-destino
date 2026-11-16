@@ -39,17 +39,32 @@ typedef struct {
     float dano_tiro;
 } TipoInimigo;
 
+/* Cada herói muda só os números da mesma lógica de armas: quantos inimigos ele ataca por
+ * disparo (qtd_alvos, 0 = não atira) e se começa com o pulso em área (raio_pulso > 0). */
 typedef struct {
     const char *nome;
+    const char *arma;             /* nome da arma, mostrado na seleção */
+    const char *descricao;        /* frase curta, mostrada na seleção */
     float vida;
     float velocidade;
     float dano;
-    float cadencia;
+    float cadencia;               /* segundos entre disparos */
+    int qtd_alvos;
+    float alcance;                /* distância máxima dos tiros, em pixels */
+    float raio_pulso;             /* 0 = começa sem pulso */
+    float dano_pulso;
+    float intervalo_pulso;
     Color cor;
+    Color cor_projetil;           /* usada quando a imagem do tiro não existe */
     const char *arquivo_imagem;
     const char *arquivo_caminhada;
     int quadros_caminhada;
+    const char *arquivo_projetil;
     float altura_visual;
+    const char *nome_quantidade;      /* texto da melhoria "mais golpes" deste herói */
+    const char *desc_quantidade;
+    const char *nome_segunda_arma;    /* texto da carta "Nova arma" deste herói */
+    const char *desc_segunda_arma;
 } Personagem;
 
 typedef struct {

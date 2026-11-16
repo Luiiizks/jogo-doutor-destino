@@ -25,6 +25,7 @@ int jogador_pode_subir_nivel(const Jogador *jogador);
 void jogador_subir_nivel(Jogador *jogador);
 
 /* Sorteia até OPCOES_LEVEL_UP melhorias diferentes que ainda não estão no nível máximo.
+ * A carta "Nova arma" aparece sempre a partir de NIVEL_NOVA_ARMA, até ser escolhida.
  * Devolve quantas foram sorteadas (pode ser 0 se tudo estiver no máximo). */
 int jogador_sortear_upgrades(const Jogador *jogador, int escolhas[]);
 

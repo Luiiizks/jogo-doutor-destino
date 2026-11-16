@@ -155,13 +155,18 @@ static void teste_mais_proximos(void)
     lista_inserir_fim(lista, inimigo_em(20));
     lista_ordenar_por_distancia(lista, jogador);
 
-    encontrados = lista_obter_mais_proximos(lista, 2, alvos);
+    encontrados = lista_obter_mais_proximos(lista, 2, 1000.0f, alvos);
     conferir(encontrados == 2, "pediu 2 e veio 2");
     conferir(alvos[0]->dados.posicao.x == 10 && alvos[1]->dados.posicao.x == 20,
              "os 2 mais perto sao 10 e 20");
 
-    encontrados = lista_obter_mais_proximos(lista, 5, alvos);
+    encontrados = lista_obter_mais_proximos(lista, 5, 1000.0f, alvos);
     conferir(encontrados == 3, "pediu 5 com so 3 na lista: veio 3");
+
+    encontrados = lista_obter_mais_proximos(lista, 5, 25.0f, alvos);
+    conferir(encontrados == 2, "alcance 25: so os de 10 e 20 estao dentro");
+    encontrados = lista_obter_mais_proximos(lista, 5, 5.0f, alvos);
+    conferir(encontrados == 0, "alcance 5: ninguem dentro");
     lista_destruir(lista);
 }
 
@@ -181,21 +186,26 @@ static void teste_projetil(void)
 {
     ListaInimigos *lista = lista_criar();
     Projetil projetil = { { 0, 0 }, { 0, 0 }, 4.0f, 2.0f, 1.0f };
-    int xp_ganho = 0;
+    Morte mortes[4];
+    int qtd_mortes;
 
     printf("colisao com projetil\n");
     lista_inserir_fim(lista, inimigo_em(100));
-    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) == 0, "longe: erra");
+    conferir(lista_colidir_com_projetil(lista, &projetil) == 0, "longe: erra");
 
     lista_inserir_fim(lista, inimigo_em(3));
-    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) == 1, "perto: acerta");
-    conferir(xp_ganho == 0 && lista_contar(lista) == 2, "vida 10 - dano 4: nao morre");
+    conferir(lista_colidir_com_projetil(lista, &projetil) == 1, "perto: acerta");
+    conferir(lista_retirar_mortes(lista, mortes, 4) == 0 && lista_contar(lista) == 2,
+             "vida 10 - dano 4: nao morre");
     conferir(lista->fim->dados.tempo_flash > 0.0f || lista->inicio->dados.tempo_flash > 0.0f,
              "quem levou dano fica com flash");
 
     projetil.dano = 50.0f;
-    lista_colidir_com_projetil(lista, &projetil, &xp_ganho);
-    conferir(lista_contar(lista) == 1 && xp_ganho == 3, "dano grande: morre, remove e da xp");
+    lista_colidir_com_projetil(lista, &projetil);
+    qtd_mortes = lista_retirar_mortes(lista, mortes, 4);
+    conferir(lista_contar(lista) == 1 && qtd_mortes == 1 && mortes[0].xp == 3,
+             "dano grande: morre, remove e registra a morte com o xp");
+    conferir(lista_retirar_mortes(lista, mortes, 4) == 0, "retirar mortes zera o registro");
     lista_destruir(lista);
 }
 
@@ -203,7 +213,7 @@ static void teste_dano_em_area(void)
 {
     ListaInimigos *lista = lista_criar();
     Vetor2 centro = { 0, 0 };
-    int xp_ganho = 0;
+    Morte mortes[4];
     int atingidos;
 
     printf("dano em area\n");
@@ -211,11 +221,12 @@ static void teste_dano_em_area(void)
     lista_inserir_fim(lista, inimigo_em(20));
     lista_inserir_fim(lista, inimigo_em(500));
 
-    atingidos = lista_dano_em_area(lista, centro, 30.0f, 100.0f, &xp_ganho);
+    atingidos = lista_dano_em_area(lista, centro, 30.0f, 100.0f);
     conferir(atingidos == 2, "atingiu os 2 que estavam no raio");
     conferir(lista_contar(lista) == 1 && lista->inicio->dados.posicao.x == 500,
              "so o distante sobrou");
-    conferir(xp_ganho == 6, "somou o xp dos 2 mortos");
+    conferir(lista_retirar_mortes(lista, mortes, 4) == 2 && mortes[0].xp + mortes[1].xp == 6,
+             "registrou as 2 mortes com o xp");
     lista_destruir(lista);
 }
 
@@ -274,7 +285,6 @@ static void teste_chefe_e_limpar(void)
     Projetil projetil = { { 0, 0 }, { 0, 0 }, 50.0f, 2.0f, 1.0f };
     Inimigo chefe = inimigo_em(3);
     NoInimigo *encontrado;
-    int xp_ganho = 0;
 
     printf("chefe intangivel, buscar por tipo e limpar\n");
     chefe.tipo = 7;
@@ -288,15 +298,15 @@ static void teste_chefe_e_limpar(void)
     conferir(lista_buscar_por_tipo(lista, 9) == NULL, "tipo inexistente: NULL");
 
     encontrado->dados.tempo_intangivel = 2.0f;
-    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) == 0,
+    conferir(lista_colidir_com_projetil(lista, &projetil) == 0,
              "projetil atravessa o intangivel");
-    conferir(lista_dano_em_area(lista, jogador, 30.0f, 50.0f, &xp_ganho) == 0,
+    conferir(lista_dano_em_area(lista, jogador, 30.0f, 50.0f) == 0,
              "dano em area nao pega o intangivel");
     conferir(lista_dano_de_contato(lista, jogador, 7.0f) == 0.0f,
              "intangivel nao causa dano de contato");
 
     lista_mover_todos(lista, jogador, 3.0f);
-    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) >= 0
+    conferir(lista_colidir_com_projetil(lista, &projetil) >= 0
              && lista_buscar_por_tipo(lista, 7)->dados.tempo_intangivel <= 0.0f,
              "intangibilidade acaba com o tempo");
 

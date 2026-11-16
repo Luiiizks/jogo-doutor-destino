@@ -28,29 +28,36 @@ static void criar_projetil(Partida *partida, Vetor2 alvo)
     novo->velocidade.y = diferenca_y / distancia * VELOCIDADE_PROJETIL;
     novo->dano = jogador->dano;
     novo->raio = RAIO_PROJETIL;
-    novo->tempo_restante = TEMPO_VIDA_PROJETIL;
+    novo->personagem = jogador->personagem;
+    novo->tempo_restante = jogador->alcance / VELOCIDADE_PROJETIL + 0.05f;   /* some no alcance */
     partida->qtd_projeteis++;
 }
 
 /* Um projétil para cada um dos inimigos mais próximos (primeiros nós da lista). */
-static void disparar_arcano(Partida *partida)
+static int disparar_arcano(Partida *partida)
 {
     NoInimigo *alvos[MAX_ALVOS];
     const NoInimigo *chefe;
+    float alcance = partida->jogador.alcance;
     int qtd_alvos = lista_obter_mais_proximos(partida->inimigos, partida->jogador.qtd_alvos,
-                                              alvos);
+                                              alcance, alvos);
+    int disparos = qtd_alvos;
     int indice;
 
     for (indice = 0; indice < qtd_alvos; indice++) {
         criar_projetil(partida, alvos[indice]->dados.posicao);
     }
 
-    /* Na arena, um tiro extra vai sempre para o chefe (se ele pode ser atingido), senão
-     * os reforços, que ficam mais perto, tomariam todos os disparos. */
+    /* Na arena, um tiro extra vai sempre para o chefe (se ele pode ser atingido e está no
+     * alcance), senão os reforços, que ficam mais perto, tomariam todos os disparos. */
     chefe = lista_buscar_por_tipo(partida->inimigos, TIPO_CHEFE);
-    if (chefe != NULL && chefe->dados.tempo_intangivel <= 0.0f) {
+    if (partida->jogador.qtd_alvos > 0 && chefe != NULL
+        && chefe->dados.tempo_intangivel <= 0.0f
+        && chefe->dados.distancia_quadrada <= alcance * alcance) {
         criar_projetil(partida, chefe->dados.posicao);
+        disparos++;
     }
+    return disparos;
 }
 
 /* Cria um número de dano na posição do acerto (ignora se o vetor estiver cheio). */
@@ -90,7 +97,6 @@ static void atualizar_numeros_dano(Partida *partida, float dt)
 /* Move os projéteis, testa colisão com a lista e tira os que acertaram ou expiraram. */
 static void atualizar_projeteis(Partida *partida, float dt)
 {
-    int xp_ganho = 0;
     int indice = 0;
 
     while (indice < partida->qtd_projeteis) {
@@ -100,7 +106,7 @@ static void atualizar_projeteis(Partida *partida, float dt)
         projetil->posicao.x += projetil->velocidade.x * dt;
         projetil->posicao.y += projetil->velocidade.y * dt;
         projetil->tempo_restante -= dt;
-        acertou = lista_colidir_com_projetil(partida->inimigos, projetil, &xp_ganho);
+        acertou = lista_colidir_com_projetil(partida->inimigos, projetil);
 
         if (acertou) {
             criar_numero_dano(partida, projetil->posicao, projetil->dano);
@@ -113,14 +119,23 @@ static void atualizar_projeteis(Partida *partida, float dt)
             indice++;
         }
     }
-    partida->jogador.xp += xp_ganho;
 }
 
-/* Pulso de energia: a cada INTERVALO_PULSO segundos machuca todos num raio. */
+/* Um golpe da onda de impacto: machuca todos num raio ao redor do herói. */
+static void dar_golpe(Partida *partida)
+{
+    Jogador *jogador = &partida->jogador;
+
+    jogador->efeito_pulso = DURACAO_EFEITO_PULSO;
+    lista_dano_em_area(partida->inimigos, jogador->posicao, jogador->raio_pulso,
+                       jogador->dano_pulso);
+}
+
+/* Onda de impacto (soco do Hulk / pulso): a cada "intervalo_pulso" segundos o herói bate
+ * "golpes_pulso" vezes seguidas, com um pequeno intervalo entre elas. */
 static void atualizar_pulso(Partida *partida, float dt)
 {
     Jogador *jogador = &partida->jogador;
-    int xp_ganho = 0;
 
     if (jogador->efeito_pulso > 0.0f) {
         jogador->efeito_pulso -= dt;
@@ -128,13 +143,20 @@ static void atualizar_pulso(Partida *partida, float dt)
     if (jogador->raio_pulso <= 0.0f) {
         return;
     }
+    if (jogador->golpes_restantes > 0) {
+        jogador->tempo_ate_golpe -= dt;
+        if (jogador->tempo_ate_golpe <= 0.0f) {
+            dar_golpe(partida);
+            jogador->golpes_restantes--;
+            jogador->tempo_ate_golpe = INTERVALO_ENTRE_GOLPES;
+        }
+        return;
+    }
     jogador->tempo_ate_pulso -= dt;
     if (jogador->tempo_ate_pulso <= 0.0f) {
-        jogador->tempo_ate_pulso = INTERVALO_PULSO;
-        jogador->efeito_pulso = DURACAO_EFEITO_PULSO;
-        lista_dano_em_area(partida->inimigos, jogador->posicao, jogador->raio_pulso,
-                           jogador->dano_pulso, &xp_ganho);
-        jogador->xp += xp_ganho;
+        jogador->tempo_ate_pulso = jogador->intervalo_pulso;
+        jogador->golpes_restantes = jogador->golpes_pulso;
+        jogador->tempo_ate_golpe = 0.0f;
     }
 }
 
@@ -180,9 +202,9 @@ void armas_atualizar(Partida *partida, float dt)
     Jogador *jogador = &partida->jogador;
 
     jogador->tempo_ate_disparo -= dt;
-    if (jogador->tempo_ate_disparo <= 0.0f && !lista_esta_vazia(partida->inimigos)) {
-        jogador->tempo_ate_disparo = jogador->cadencia;
-        disparar_arcano(partida);
+    if (jogador->tempo_ate_disparo <= 0.0f && !lista_esta_vazia(partida->inimigos)
+        && disparar_arcano(partida) > 0) {
+        jogador->tempo_ate_disparo = jogador->cadencia;   /* só recarrega se atirou */
     }
     atualizar_projeteis(partida, dt);
     atualizar_pulso(partida, dt);

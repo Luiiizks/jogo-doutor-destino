@@ -5,6 +5,7 @@
 #ifndef LISTA_INIMIGOS_H
 #define LISTA_INIMIGOS_H
 
+#include "config.h"
 #include "tipos.h"
 
 typedef struct NoInimigo {
@@ -18,6 +19,8 @@ typedef struct {
     NoInimigo *fim;
     int tamanho;
     int proximo_id;            /* contador para dar um id único a cada inimigo */
+    Morte mortes[LIMITE_MORTES];   /* quem morreu desde a última retirada (para soltar drops) */
+    int qtd_mortes;
 } ListaInimigos;
 
 /* Cria uma lista vazia. Devolve NULL se faltar memória. O(1) */
@@ -36,9 +39,12 @@ void lista_remover_no(ListaInimigos *lista, NoInimigo *no);
  * Pior caso (lista invertida): O(n²). */
 void lista_ordenar_por_distancia(ListaInimigos *lista, Vetor2 posicao_jogador);
 
-/* Copia em "alvos" os ponteiros dos primeiros "quantidade" nós (os mais próximos,
- * se a lista estiver ordenada). Devolve quantos achou. O(quantidade) */
-int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade,
+/* Copia em "alvos" os ponteiros dos primeiros "quantidade" nós que estiverem dentro do
+ * "alcance" (em pixels). Como a lista está ordenada por distância (ver
+ * lista_ordenar_por_distancia, chamada antes no mesmo quadro), a busca PARA no primeiro
+ * inimigo fora do alcance: todos os seguintes estão ainda mais longe.
+ * Devolve quantos achou. O(quantidade) */
+int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade, float alcance,
                               NoInimigo *alvos[]);
 
 /* Anda com todos os inimigos em direção ao herói; os atiradores param a certa
@@ -46,15 +52,17 @@ int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade,
 void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt);
 
 /* Testa um projétil contra os inimigos (intangíveis são atravessados). Se acertar o primeiro
- * que encontrar, aplica o dano, remove o inimigo se morreu e soma o xp dele em *xp_ganho.
+ * que encontrar, aplica o dano e remove o inimigo se morreu (registrando a morte).
  * Devolve 1 se acertou e 0 se não. O(n) */
-int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
-                               int *xp_ganho);
+int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil);
 
-/* Dano em área (pulso de energia): atinge todos dentro do raio. Remove os mortos e
- * soma o xp em *xp_ganho. Devolve quantos foram atingidos. O(n) */
-int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float dano,
-                       int *xp_ganho);
+/* Dano em área (onda de impacto, pulso): atinge todos dentro do raio. Remove os mortos
+ * (registrando as mortes). Devolve quantos foram atingidos. O(n) */
+int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float dano);
+
+/* Copia para "saida" as mortes registradas (até "maximo") e zera o registro. Quem chama usa
+ * a posição e o XP delas para soltar os drops. Devolve quantas copiou. O(mortes) */
+int lista_retirar_mortes(ListaInimigos *lista, Morte saida[], int maximo);
 
 /* Maior dano de contato entre os inimigos que estão encostando no herói (0 se nenhum).
  * Usado para o herói levar dano da horda. O(n) */
