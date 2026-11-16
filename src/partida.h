@@ -12,6 +12,9 @@ typedef struct {
     ListaInimigos *inimigos;
     Projetil projeteis[MAX_PROJETEIS];
     int qtd_projeteis;
+    NumeroDano numeros_dano[MAX_NUMEROS_DANO];
+    int qtd_numeros_dano;
+    float tempo_tremor;        /* segundos restantes do tremor de tela */
     Projetil tiros_inimigos[MAX_TIROS_INIMIGOS];
     int qtd_tiros_inimigos;
     int mundo;                 /* índice na tabela de mundos */
@@ -32,6 +35,13 @@ typedef enum {
 
 /* Começa uma partida nova. Devolve 0 se faltar memória para a lista, 1 se deu certo. */
 int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo);
+
+/* Devolve 1 se existe um mundo depois do atual na tabela de mundos. */
+int partida_tem_proximo_mundo(const Partida *partida);
+
+/* Passa para o próximo mundo mantendo o herói (nível, melhorias) e curando parte da vida.
+ * Devolve 0 se faltar memória. Chame só se partida_tem_proximo_mundo for 1. */
+int partida_proximo_mundo(Partida *partida);
 
 /* Libera a lista de inimigos (fim de mundo ou de partida). Pode chamar mais de uma vez. */
 void partida_encerrar(Partida *partida);

@@ -3,21 +3,55 @@
 
 #include "dados.h"
 
+/* altura_visual: quanto o desenho aparece de alto na tela (em pixels), contando só a parte
+ * que não é transparente. Independe do tamanho do PNG: para mudar o tamanho de um
+ * personagem na tela, mexa só nesse número. O herói tem 56. */
 static const TipoInimigo tipos_inimigo[TOTAL_TIPOS_INIMIGO] = {
-    /* nome, vida, velocidade, dano contato, raio, xp, cor, imagem,
-     * distância de ataque, intervalo do tiro, dano do tiro */
-    { "Doombot", 20.0f, 60.0f, 8.0f, 12.0f, 5, { 150, 160, 170, 255 },
-      "assets/sprites/inimigo_doombot.png", 0.0f, 0.0f, 0.0f },
-    { "Doombot Veloz", 10.0f, 110.0f, 5.0f, 10.0f, 4, { 230, 150, 60, 255 },
-      "assets/sprites/inimigo_doombot_veloz.png", 0.0f, 0.0f, 0.0f },
-    { "Mago", 30.0f, 70.0f, 4.0f, 13.0f, 10, { 170, 90, 220, 255 },
-      "assets/sprites/inimigo_mago.png", 320.0f, 2.0f, 10.0f },
+    [TIPO_DOOMBOT] = {
+        .nome = "Doombot", .vida = 20.0f, .velocidade = 60.0f, .dano_contato = 8.0f,
+        .raio = 12.0f, .xp = 5, .cor = { 150, 160, 170, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_doombot.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_doombot_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 49.0f },
+    [TIPO_DOOMBOT_VELOZ] = {
+        .nome = "Doombot Veloz", .vida = 10.0f, .velocidade = 110.0f, .dano_contato = 5.0f,
+        .raio = 10.0f, .xp = 4, .cor = { 230, 150, 60, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_doombot_veloz.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_doombot_veloz_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 46.0f },
+    [TIPO_MAGO] = {
+        .nome = "Mago", .vida = 30.0f, .velocidade = 70.0f, .dano_contato = 4.0f,
+        .raio = 13.0f, .xp = 10, .cor = { 170, 90, 220, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_mago.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_mago_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 54.0f,
+        .distancia_ataque = 320.0f, .intervalo_tiro = 2.0f, .dano_tiro = 10.0f },
+    [TIPO_DOOMBOT_ELITE] = {
+        .nome = "Doombot Elite", .vida = 50.0f, .velocidade = 75.0f, .dano_contato = 12.0f,
+        .raio = 14.0f, .xp = 12, .cor = { 200, 70, 70, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_doombot_elite.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_doombot_elite_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 70.0f },
+    [TIPO_SENTINELA] = {
+        .nome = "Sentinela", .vida = 80.0f, .velocidade = 40.0f, .dano_contato = 15.0f,
+        .raio = 20.0f, .xp = 15, .cor = { 120, 120, 200, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_sentinela.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_sentinela_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 120.0f },
+    [TIPO_ESPECTRO] = {
+        .nome = "Espectro", .vida = 15.0f, .velocidade = 130.0f, .dano_contato = 6.0f,
+        .raio = 11.0f, .xp = 6, .cor = { 120, 255, 170, 255 },
+        .arquivo_imagem = "assets/sprites/inimigo_espectro.png",
+        .arquivo_caminhada = "assets/sprites/inimigo_espectro_walk.png",
+        .quadros_caminhada = 4, .altura_visual = 52.0f },
 };
 
 static const Personagem personagens[] = {
-    /* nome, vida, velocidade, dano, cadência, cor, imagem */
-    { "Herói", 100.0f, 180.0f, 10.0f, 0.8f, { 120, 170, 255, 255 },
-      "assets/sprites/heroi_a.png" },
+    { .nome = "Herói", .vida = 100.0f, .velocidade = 180.0f, .dano = 10.0f, .cadencia = 0.8f,
+      .cor = { 120, 170, 255, 255 },
+      .arquivo_imagem = "assets/sprites/heroi_a.png",
+      .arquivo_caminhada = "assets/sprites/heroi_a_walk.png",
+      .quadros_caminhada = 4, .altura_visual = 56.0f },
 };
 
 static const DadosUpgrade upgrades[TOTAL_UPGRADES] = {
@@ -30,10 +64,56 @@ static const DadosUpgrade upgrades[TOTAL_UPGRADES] = {
 };
 
 static const Mundo mundos[] = {
-    /* O Doombot aparece duas vezes na lista de tipos para ser mais comum que os outros. */
-    { "Latveria", 90.0f, 1.0f, 0.45f,
-      { TIPO_DOOMBOT, TIPO_DOOMBOT, TIPO_DOOMBOT_VELOZ, TIPO_MAGO }, 4,
-      { 60, 55, 85, 255 }, "assets/chao/chao_mundo1.png" },
+    {
+        .nome = "Latveria", .duracao = 90.0f,
+        .intervalo_inicial = 1.0f, .intervalo_final = 0.45f,
+        /* O Doombot aparece duas vezes na lista para ser mais comum que os outros. */
+        .tipos = { TIPO_DOOMBOT, TIPO_DOOMBOT, TIPO_DOOMBOT_VELOZ, TIPO_MAGO },
+        .qtd_tipos = 4,
+        .cor_linhas_chao = { 60, 55, 85, 255 },
+        .arquivo_chao = "assets/chao/chao_mundo1.png",
+        .objetos = {
+            { "assets/cenario/m1_poste.png", 96.0f },
+            { "assets/cenario/m1_barril.png", 40.0f },
+            { "assets/cenario/m1_carroca.png", 64.0f },
+            { "assets/cenario/m1_estatua.png", 80.0f },
+            { "assets/cenario/m1_entulho.png", 24.0f },
+        },
+        .qtd_objetos = 5,
+    },
+    {
+        .nome = "Terra dos Sentinelas", .duracao = 90.0f,
+        .intervalo_inicial = 0.9f, .intervalo_final = 0.40f,
+        .tipos = { TIPO_DOOMBOT, TIPO_DOOMBOT, TIPO_DOOMBOT_ELITE, TIPO_SENTINELA },
+        .qtd_tipos = 4,
+        .cor_linhas_chao = { 110, 70, 40, 255 },
+        .arquivo_chao = "assets/chao/chao_mundo2.png",
+        .objetos = {
+            { "assets/cenario/m2_engrenagem.png", 64.0f },
+            { "assets/cenario/m2_robo_caido.png", 64.0f },
+            { "assets/cenario/m2_caixote.png", 40.0f },
+            { "assets/cenario/m2_antena.png", 88.0f },
+            { "assets/cenario/m2_cacto_metal.png", 56.0f },
+        },
+        .qtd_objetos = 5,
+    },
+    {
+        .nome = "Dimensão Sombria", .duracao = 90.0f,
+        .intervalo_inicial = 0.8f, .intervalo_final = 0.35f,
+        .tipos = { TIPO_ESPECTRO, TIPO_ESPECTRO, TIPO_MAGO, TIPO_SENTINELA,
+                   TIPO_DOOMBOT_ELITE },
+        .qtd_tipos = 5,
+        .cor_linhas_chao = { 50, 90, 70, 255 },
+        .arquivo_chao = "assets/chao/chao_mundo3.png",
+        .objetos = {
+            { "assets/cenario/m3_cristal.png", 72.0f },
+            { "assets/cenario/m3_pedra_runa.png", 64.0f },
+            { "assets/cenario/m3_galho.png", 72.0f },
+            { "assets/cenario/m3_olho.png", 40.0f },
+            { "assets/cenario/m3_fragmento.png", 48.0f },
+        },
+        .qtd_objetos = 5,
+    },
 };
 
 const TipoInimigo *dados_tipo_inimigo(int tipo)

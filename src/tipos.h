@@ -20,6 +20,8 @@ typedef struct {
     float dano_contato;        /* dano causado ao herói ao encostar */
     float raio;                /* tamanho do círculo de colisão */
     int xp;                    /* experiência dada ao morrer */
+    int andando;               /* 1 se andou neste quadro (usado na animação) */
+    float tempo_flash;         /* segundos restantes do brilho de "levou dano" */
     float distancia_quadrada;  /* distância² até o herói (calculada na ordenação) */
 
     /* ataque à distância (distancia_ataque 0 = só corpo a corpo) */
@@ -37,6 +39,13 @@ typedef struct {
     float raio;
     float tempo_restante;      /* segundos até sumir sozinho */
 } Projetil;
+
+/* Número de dano que sobe e some depois de um acerto. */
+typedef struct {
+    Vetor2 posicao;
+    int valor;
+    float tempo_restante;
+} NumeroDano;
 
 /* Melhorias que o jogador escolhe ao subir de nível. */
 typedef enum {
@@ -58,6 +67,7 @@ typedef struct {
     float velocidade;          /* pixels por segundo */
     float raio;
     int olhando_esquerda;      /* 1 se a última direção horizontal foi para a esquerda */
+    int andando;               /* 1 se alguma tecla de movimento está apertada */
     float tempo_invulneravel;  /* segundos restantes sem levar dano */
 
     /* disparo arcano */

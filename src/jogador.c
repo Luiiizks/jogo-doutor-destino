@@ -47,6 +47,7 @@ static void mover_pelo_teclado(Jogador *jogador, float dt)
 
     /* Na diagonal o vetor fica maior que 1; dividimos para não andar mais rápido. */
     tamanho = sqrtf(direcao_x * direcao_x + direcao_y * direcao_y);
+    jogador->andando = tamanho > 0.0f;
     if (direcao_x != 0.0f) {
         jogador->olhando_esquerda = direcao_x < 0.0f;
     }

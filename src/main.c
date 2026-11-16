@@ -4,6 +4,7 @@
 
 #include "raylib.h"
 #include "config.h"
+#include "dados.h"
 #include "desenho.h"
 #include "imagens.h"
 #include "interface.h"
@@ -17,7 +18,8 @@ typedef enum {
     TELA_PAUSA,
     TELA_LEVEL_UP,
     TELA_DERROTA,
-    TELA_MUNDO_CONCLUIDO
+    TELA_MUNDO_CONCLUIDO,
+    TELA_TRANSICAO
 } Tela;
 
 /* Tudo que o loop principal precisa lembrar entre um quadro e outro. */
@@ -95,7 +97,8 @@ static void atualizar_jogando(Jogo *jogo)
         jogo->tela = TELA_DERROTA;
     } else if (resultado == PARTIDA_MUNDO_CONCLUIDO) {
         jogo->opcao = 0;
-        jogo->tela = TELA_MUNDO_CONCLUIDO;
+        jogo->tela = partida_tem_proximo_mundo(&jogo->partida) ? TELA_TRANSICAO
+                                                               : TELA_MUNDO_CONCLUIDO;
     } else {
         verificar_level_up(jogo);
     }
@@ -143,6 +146,19 @@ static void atualizar_fim(Jogo *jogo)
     }
 }
 
+/* Passa para o mundo seguinte quando o jogador confirma na tela de transição. */
+static void atualizar_transicao(Jogo *jogo)
+{
+    if (!interface_atualizar_transicao()) {
+        return;
+    }
+    if (partida_proximo_mundo(&jogo->partida)) {
+        jogo->tela = TELA_JOGANDO;
+    } else {
+        jogo->tela = TELA_MENU;     /* faltou memória: volta ao menu em vez de travar */
+    }
+}
+
 static void atualizar(Jogo *jogo)
 {
     if (jogo->tela == TELA_MENU) {
@@ -157,6 +173,8 @@ static void atualizar(Jogo *jogo)
         atualizar_pausa(jogo);
     } else if (jogo->tela == TELA_LEVEL_UP) {
         atualizar_level_up(jogo);
+    } else if (jogo->tela == TELA_TRANSICAO) {
+        atualizar_transicao(jogo);
     } else {
         atualizar_fim(jogo);
     }
@@ -176,6 +194,9 @@ static void desenhar(const Jogo *jogo)
         } else if (jogo->tela == TELA_LEVEL_UP) {
             interface_desenhar_level_up(&jogo->partida.jogador, jogo->escolhas,
                                         jogo->qtd_escolhas, jogo->opcao);
+        } else if (jogo->tela == TELA_TRANSICAO) {
+            interface_desenhar_transicao(dados_mundo(jogo->partida.mundo)->nome,
+                                         dados_mundo(jogo->partida.mundo + 1)->nome);
         } else if (jogo->tela == TELA_DERROTA) {
             interface_desenhar_derrota(jogo->opcao);
         } else if (jogo->tela == TELA_MUNDO_CONCLUIDO) {

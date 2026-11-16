@@ -6,14 +6,18 @@
 #define DADOS_H
 
 #include "raylib.h"
+#include "config.h"
 #include "tipos.h"
 
-#define MAX_TIPOS_POR_MUNDO 4
+#define MAX_TIPOS_POR_MUNDO 5
 
 typedef enum {
     TIPO_DOOMBOT,
     TIPO_DOOMBOT_VELOZ,
     TIPO_MAGO,
+    TIPO_DOOMBOT_ELITE,
+    TIPO_SENTINELA,
+    TIPO_ESPECTRO,
     TOTAL_TIPOS_INIMIGO
 } IndiceTipoInimigo;
 
@@ -25,7 +29,10 @@ typedef struct {
     float raio;
     int xp;
     Color cor;                    /* usada quando a imagem não existe */
-    const char *arquivo_imagem;
+    const char *arquivo_imagem;   /* imagem parada */
+    const char *arquivo_caminhada;/* spritesheet da caminhada (NULL = não tem) */
+    int quadros_caminhada;        /* quantos quadros lado a lado na spritesheet */
+    float altura_visual;          /* altura na tela, em pixels, da parte visível do desenho */
     float distancia_ataque;       /* 0 = só corpo a corpo */
     float intervalo_tiro;
     float dano_tiro;
@@ -39,12 +46,21 @@ typedef struct {
     float cadencia;
     Color cor;
     const char *arquivo_imagem;
+    const char *arquivo_caminhada;
+    int quadros_caminhada;
+    float altura_visual;
 } Personagem;
 
 typedef struct {
     const char *nome;
     const char *descricao;
 } DadosUpgrade;
+
+/* Objeto de cenário (poste, barril...). Só enfeite: o herói passa por cima. */
+typedef struct {
+    const char *arquivo_imagem;
+    float altura_visual;          /* altura na tela, em pixels, da parte visível */
+} ObjetoCenario;
 
 typedef struct {
     const char *nome;
@@ -55,6 +71,8 @@ typedef struct {
     int qtd_tipos;
     Color cor_linhas_chao;
     const char *arquivo_chao;
+    ObjetoCenario objetos[MAX_OBJETOS_POR_MUNDO];
+    int qtd_objetos;
 } Mundo;
 
 const TipoInimigo *dados_tipo_inimigo(int tipo);

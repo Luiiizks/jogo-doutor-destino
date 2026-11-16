@@ -43,6 +43,40 @@ static void disparar_arcano(Partida *partida)
     }
 }
 
+/* Cria um número de dano na posição do acerto (ignora se o vetor estiver cheio). */
+static void criar_numero_dano(Partida *partida, Vetor2 posicao, float dano)
+{
+    NumeroDano *numero;
+
+    if (partida->qtd_numeros_dano >= MAX_NUMEROS_DANO) {
+        return;
+    }
+    numero = &partida->numeros_dano[partida->qtd_numeros_dano];
+    numero->posicao = posicao;
+    numero->valor = (int)dano;
+    numero->tempo_restante = DURACAO_NUMERO_DANO;
+    partida->qtd_numeros_dano++;
+}
+
+/* Faz os números de dano subirem e tira os que já acabaram. */
+static void atualizar_numeros_dano(Partida *partida, float dt)
+{
+    int indice = 0;
+
+    while (indice < partida->qtd_numeros_dano) {
+        NumeroDano *numero = &partida->numeros_dano[indice];
+
+        numero->posicao.y -= VELOCIDADE_NUMERO_DANO * dt;
+        numero->tempo_restante -= dt;
+        if (numero->tempo_restante <= 0.0f) {
+            partida->qtd_numeros_dano--;
+            partida->numeros_dano[indice] = partida->numeros_dano[partida->qtd_numeros_dano];
+        } else {
+            indice++;
+        }
+    }
+}
+
 /* Move os projéteis, testa colisão com a lista e tira os que acertaram ou expiraram. */
 static void atualizar_projeteis(Partida *partida, float dt)
 {
@@ -58,6 +92,9 @@ static void atualizar_projeteis(Partida *partida, float dt)
         projetil->tempo_restante -= dt;
         acertou = lista_colidir_com_projetil(partida->inimigos, projetil, &xp_ganho);
 
+        if (acertou) {
+            criar_numero_dano(partida, projetil->posicao, projetil->dano);
+        }
         if (acertou || projetil->tempo_restante <= 0.0f) {
             /* Troca pelo último do vetor (a ordem dos projéteis não importa). */
             partida->qtd_projeteis--;
@@ -140,4 +177,5 @@ void armas_atualizar(Partida *partida, float dt)
     atualizar_projeteis(partida, dt);
     atualizar_pulso(partida, dt);
     atualizar_tiros_inimigos(partida, dt);
+    atualizar_numeros_dano(partida, dt);
 }

@@ -140,6 +140,24 @@ void interface_desenhar_mundo_concluido(int selecionada)
     desenhar_opcoes(rotulos_fim, TOTAL_OPCOES_FIM, selecionada);
 }
 
+int interface_atualizar_transicao(void)
+{
+    return IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+           || IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+}
+
+void interface_desenhar_transicao(const char *mundo_concluido, const char *proximo_mundo)
+{
+    escurecer_tela();
+    desenhar_texto_centralizado(TextFormat("%s concluído!", mundo_concluido), 190, 52,
+                                (Color){ 120, 220, 140, 255 });
+    desenhar_texto_centralizado("Próximo mundo:", 290, 26, LIGHTGRAY);
+    desenhar_texto_centralizado(proximo_mundo, 330, 44, RAYWHITE);
+    desenhar_texto_centralizado("Você recupera parte da vida e mantém suas melhorias.", 420, 22,
+                                LIGHTGRAY);
+    desenhar_texto_centralizado("ENTER para continuar", 520, 26, GOLD);
+}
+
 /* Retângulo da carta de melhoria de um índice (as cartas ficam lado a lado, centralizadas). */
 static Rectangle retangulo_carta(int indice, int quantidade)
 {

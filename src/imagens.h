@@ -7,15 +7,22 @@
 #include "config.h"
 #include "dados.h"
 
-/* Uma textura com id 0 significa "imagem não encontrada": o desenho usa uma forma
- * geométrica no lugar. Assim o jogo funciona mesmo sem nenhuma imagem. */
+/* Uma imagem do jogo. Se textura.id for 0, o arquivo não foi encontrado e o desenho
+ * usa uma forma geométrica no lugar. Assim o jogo funciona mesmo sem nenhuma imagem. */
 typedef struct {
-    Texture2D personagens[MAX_PERSONAGENS];
-    Texture2D inimigos[TOTAL_TIPOS_INIMIGO];
-    Texture2D chao[MAX_MUNDOS];
-    Texture2D projetil_heroi;
-    Texture2D projetil_inimigo;
-    Texture2D portal;
+    Texture2D textura;
+    int quadros;               /* quadros lado a lado (1 = imagem parada) */
+    float altura_conteudo;     /* altura visível de um quadro, sem a margem transparente */
+} Sprite;
+
+typedef struct {
+    Sprite personagens[MAX_PERSONAGENS];
+    Sprite inimigos[TOTAL_TIPOS_INIMIGO];
+    Sprite chao[MAX_MUNDOS];
+    Sprite cenario[MAX_MUNDOS][MAX_OBJETOS_POR_MUNDO];
+    Sprite projetil_heroi;
+    Sprite projetil_inimigo;
+    Sprite portal;
 } Imagens;
 
 /* Tenta carregar todas as imagens. Precisa ser chamada depois de abrir a janela. */

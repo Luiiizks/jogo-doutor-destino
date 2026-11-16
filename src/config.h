@@ -18,6 +18,9 @@
 #define LIMITE_INIMIGOS  250      /* máximo de inimigos em cena (o spawn para aqui) */
 #define RAIO_SPAWN       700.0f   /* distância do herói onde os inimigos nascem */
 
+/* Troca de mundo */
+#define CURA_TROCA_MUNDO       0.5f   /* fração da vida máxima recuperada ao mudar de mundo */
+
 /* Hordas e portal */
 #define INTERVALO_HORDA          30.0f   /* segundos entre hordas grandes */
 #define HORDA_TAMANHO_BASE       10      /* inimigos da primeira horda */
@@ -34,7 +37,22 @@
 #define RAIO_TIRO_INIMIGO    6.0f
 #define MARGEM_DISTANCIA_TIRO 30.0f   /* tolerância para considerar que já chegou à distância */
 
-/* Imagens */
+/* Objetos de cenário */
+#define TAMANHO_CELULA_CENARIO 256    /* o mapa é dividido em células deste tamanho */
+#define CHANCE_OBJETO_CENARIO  40     /* % de células que têm um objeto */
+#define RAIO_LIVRE_INICIO      120.0f /* sem objetos perto de onde o herói nasce */
+#define MAX_OBJETOS_POR_MUNDO  6
+
+/* Efeitos visuais */
+#define DURACAO_FLASH_DANO     0.12f  /* inimigo fica avermelhado ao levar dano */
+#define MAX_NUMEROS_DANO       40
+#define DURACAO_NUMERO_DANO    0.7f
+#define VELOCIDADE_NUMERO_DANO 45.0f  /* pixels por segundo, subindo */
+#define DURACAO_TREMOR         0.25f  /* tremor de tela quando o herói leva dano */
+#define FORCA_TREMOR           5.0f   /* deslocamento máximo da câmera, em pixels */
+
+/* Imagens e animação */
+#define FPS_ANIMACAO         7.0f   /* quadros da animação de caminhada por segundo */
 #define MAX_PERSONAGENS      8
 #define MAX_MUNDOS           4
 

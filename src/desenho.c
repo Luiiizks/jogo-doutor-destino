@@ -1,9 +1,10 @@
-/* desenho.c - desenho da partida na tela.
- * Por enquanto tudo é forma geométrica; depois dá para trocar por imagens aqui. */
+/* desenho.c - desenho da partida na tela: chão, inimigos, herói, projéteis e HUD.
+ * Usa imagens quando existem; senão desenha formas geométricas. */
 
 #include <math.h>
 #include <stddef.h>
 
+#include "cenario.h"
 #include "dados.h"
 #include "desenho.h"
 #include "jogador.h"
@@ -12,22 +13,41 @@
 #define ALTURA_BARRA        18
 #define ALTURA_BARRA_XP     12
 
-/* Desenha uma imagem centralizada em "centro", espelhada se "espelhar" for 1. */
-static void desenhar_imagem(Texture2D textura, Vetor2 centro, int espelhar, Color tinta)
+/* Escolhe o quadro da animação de caminhada. Parado (ou sem spritesheet) mostra o primeiro.
+ * Andando, troca FPS_ANIMACAO vezes por segundo, medido em segundos de jogo (não em quadros
+ * da tela), então a animação não depende do FPS. "deslocamento" faz cada personagem
+ * começar num quadro diferente, para a horda não andar toda sincronizada. */
+static int escolher_quadro(const Sprite *sprite, int andando, float tempo, int deslocamento)
 {
-    float largura = (float)textura.width;
-    float altura = (float)textura.height;
-    Rectangle origem = { 0.0f, 0.0f, espelhar ? -largura : largura, altura };
-    Rectangle destino = { centro.x, centro.y, largura, altura };
-    Vector2 pivo = { largura / 2.0f, altura / 2.0f };
+    if (sprite->quadros <= 1 || !andando) {
+        return 0;
+    }
+    return ((int)(tempo * FPS_ANIMACAO) + deslocamento) % sprite->quadros;
+}
 
-    DrawTexturePro(textura, origem, destino, pivo, 0.0f, tinta);
+/* Desenha um quadro do sprite centralizado em "centro".
+ * altura_visual: altura desejada na tela da parte visível (0 = tamanho original do PNG).
+ * A escala é a mesma nos dois eixos, então a proporção do desenho não distorce. */
+static void desenhar_sprite(const Sprite *sprite, Vetor2 centro, int espelhar,
+                            float altura_visual, int quadro, Color tinta)
+{
+    float escala = (altura_visual > 0.0f) ? altura_visual / sprite->altura_conteudo : 1.0f;
+    float largura_quadro = (float)sprite->textura.width / (float)sprite->quadros;
+    float altura = (float)sprite->textura.height;
+    Rectangle origem = { quadro * largura_quadro, 0.0f,
+                         espelhar ? -largura_quadro : largura_quadro, altura };
+    Rectangle destino = { roundf(centro.x), roundf(centro.y),
+                          largura_quadro * escala, altura * escala };
+    Vector2 pivo = { destino.width / 2.0f, destino.height / 2.0f };
+
+    DrawTexturePro(sprite->textura, origem, destino, pivo, 0.0f, tinta);
 }
 
 /* Chão com a imagem repetida (se existir) ou uma grade simples. */
-static void desenhar_chao(Camera2D camera, const Mundo *mundo, Texture2D imagem_chao)
+static void desenhar_chao(Camera2D camera, const Mundo *mundo, const Sprite *imagem_chao)
 {
-    int tamanho = (imagem_chao.id > 0) ? imagem_chao.width : TAMANHO_QUADRADO_CHAO;
+    int tamanho = (imagem_chao->textura.id > 0) ? imagem_chao->textura.width
+                                                : TAMANHO_QUADRADO_CHAO;
     int inicio_x = (int)floorf((camera.target.x - LARGURA_JANELA / 2.0f) / tamanho) * tamanho;
     int inicio_y = (int)floorf((camera.target.y - ALTURA_JANELA / 2.0f) / tamanho) * tamanho;
     int posicao_x;
@@ -37,8 +57,8 @@ static void desenhar_chao(Camera2D camera, const Mundo *mundo, Texture2D imagem_
          posicao_x += tamanho) {
         for (posicao_y = inicio_y; posicao_y <= camera.target.y + ALTURA_JANELA / 2;
              posicao_y += tamanho) {
-            if (imagem_chao.id > 0) {
-                DrawTexture(imagem_chao, posicao_x, posicao_y, WHITE);
+            if (imagem_chao->textura.id > 0) {
+                DrawTexture(imagem_chao->textura, posicao_x, posicao_y, WHITE);
             } else {
                 DrawRectangleLines(posicao_x, posicao_y, tamanho, tamanho,
                                    mundo->cor_linhas_chao);
@@ -47,36 +67,137 @@ static void desenhar_chao(Camera2D camera, const Mundo *mundo, Texture2D imagem_
     }
 }
 
-/* Percorre a lista de inimigos desenhando cada um (imagem ou círculo). */
-static void desenhar_inimigos(const ListaInimigos *lista, const Imagens *imagens,
-                              Vetor2 posicao_jogador)
+/* Sombra oval nos pés do personagem, para ele não parecer flutuando. */
+static void desenhar_sombra(Vetor2 centro, float altura)
+{
+    DrawEllipse((int)centro.x, (int)(centro.y + altura / 2.0f - 3.0f), altura * 0.28f,
+                altura * 0.09f, (Color){ 0, 0, 0, 90 });
+}
+
+/* Sombras de todos (herói e inimigos), desenhadas antes dos personagens. */
+static void desenhar_sombras(const Partida *partida, const Imagens *imagens)
 {
     const NoInimigo *atual;
+    const Jogador *jogador = &partida->jogador;
 
-    for (atual = lista->inicio; atual != NULL; atual = atual->proximo) {
-        const Inimigo *inimigo = &atual->dados;
-        Texture2D imagem = imagens->inimigos[inimigo->tipo];
+    for (atual = partida->inimigos->inicio; atual != NULL; atual = atual->proximo) {
+        const TipoInimigo *dados = dados_tipo_inimigo(atual->dados.tipo);
+        float altura = (imagens->inimigos[atual->dados.tipo].textura.id > 0)
+                       ? dados->altura_visual : atual->dados.raio * 2.0f;
 
-        if (imagem.id > 0) {
-            /* A imagem olha para a direita; espelha se o herói está à esquerda. */
-            desenhar_imagem(imagem, inimigo->posicao,
-                            posicao_jogador.x < inimigo->posicao.x, WHITE);
-        } else {
-            DrawCircle((int)inimigo->posicao.x, (int)inimigo->posicao.y, inimigo->raio,
-                       dados_tipo_inimigo(inimigo->tipo)->cor);
+        desenhar_sombra(atual->dados.posicao, altura);
+    }
+    desenhar_sombra(jogador->posicao,
+                    (imagens->personagens[jogador->personagem].textura.id > 0)
+                    ? dados_personagem(jogador->personagem)->altura_visual
+                    : jogador->raio * 2.0f);
+}
+
+/* Números de dano: sobem e vão ficando transparentes. */
+static void desenhar_numeros_dano(const Partida *partida)
+{
+    int indice;
+
+    for (indice = 0; indice < partida->qtd_numeros_dano; indice++) {
+        const NumeroDano *numero = &partida->numeros_dano[indice];
+        float transparencia = numero->tempo_restante / DURACAO_NUMERO_DANO;
+
+        DrawText(TextFormat("%d", numero->valor), (int)numero->posicao.x + 1,
+                 (int)numero->posicao.y + 1, 20, Fade(BLACK, transparencia));
+        DrawText(TextFormat("%d", numero->valor), (int)numero->posicao.x,
+                 (int)numero->posicao.y, 20, Fade(YELLOW, transparencia));
+    }
+}
+
+/* Desenha os objetos de cenário que aparecem na tela. Cada célula do mapa sorteia seu
+ * objeto (ver cenario.c). Só desenha os que têm imagem. "atras_do_heroi" separa os objetos
+ * acima do herói (desenhados antes dele) dos abaixo (desenhados depois), para o herói passar
+ * "por trás" de um poste quando está acima dele. */
+static void desenhar_cenario(const Partida *partida, const Imagens *imagens, Camera2D camera,
+                             int atras_do_heroi)
+{
+    const Mundo *mundo = dados_mundo(partida->mundo);
+    int primeira_x = (int)floorf((camera.target.x - LARGURA_JANELA / 2.0f)
+                                 / TAMANHO_CELULA_CENARIO) - 1;
+    int ultima_x = (int)floorf((camera.target.x + LARGURA_JANELA / 2.0f)
+                               / TAMANHO_CELULA_CENARIO) + 1;
+    int primeira_y = (int)floorf((camera.target.y - ALTURA_JANELA / 2.0f)
+                                 / TAMANHO_CELULA_CENARIO) - 1;
+    int ultima_y = (int)floorf((camera.target.y + ALTURA_JANELA / 2.0f)
+                               / TAMANHO_CELULA_CENARIO) + 1;
+    int celula_x;
+    int celula_y;
+
+    for (celula_x = primeira_x; celula_x <= ultima_x; celula_x++) {
+        for (celula_y = primeira_y; celula_y <= ultima_y; celula_y++) {
+            Vetor2 base;
+            int objeto = cenario_sortear_objeto(partida->mundo, celula_x, celula_y,
+                                                mundo->qtd_objetos, &base);
+            const Sprite *sprite;
+            float altura;
+
+            if (objeto < 0 || (base.y <= partida->jogador.posicao.y) != atras_do_heroi) {
+                continue;
+            }
+            sprite = &imagens->cenario[partida->mundo][objeto];
+            altura = mundo->objetos[objeto].altura_visual;
+            if (sprite->textura.id > 0) {
+                /* "base" é o pé do objeto; o desenho é centralizado, então sobe meia altura. */
+                Vetor2 centro = { base.x, base.y - altura / 2.0f };
+
+                desenhar_sombra(centro, altura);
+                desenhar_sprite(sprite, centro, 0, altura, 0, WHITE);
+            }
+        }
+    }
+}
+
+/* Desenha um inimigo (imagem ou círculo). */
+static void desenhar_inimigo(const Inimigo *inimigo, const Imagens *imagens,
+                             Vetor2 posicao_jogador, float tempo)
+{
+    const Sprite *sprite = &imagens->inimigos[inimigo->tipo];
+    const TipoInimigo *dados = dados_tipo_inimigo(inimigo->tipo);
+
+    if (sprite->textura.id > 0) {
+        /* A imagem olha para a direita; espelha se o herói está à esquerda. */
+        desenhar_sprite(sprite, inimigo->posicao, posicao_jogador.x < inimigo->posicao.x,
+                        dados->altura_visual,
+                        escolher_quadro(sprite, inimigo->andando, tempo, inimigo->id),
+                        inimigo->tempo_flash > 0.0f ? (Color){ 255, 80, 80, 255 } : WHITE);
+    } else {
+        DrawCircle((int)inimigo->posicao.x, (int)inimigo->posicao.y, inimigo->raio,
+                   inimigo->tempo_flash > 0.0f ? WHITE : dados->cor);
+    }
+}
+
+/* Percorre a lista desenhando os inimigos de um lado do herói: os que estão mais acima
+ * (atras_do_heroi = 1) ou mais abaixo (0). Assim quem está embaixo aparece na frente,
+ * como numa visão de cima inclinada. */
+static void desenhar_inimigos(const Partida *partida, const Imagens *imagens,
+                              int atras_do_heroi)
+{
+    const NoInimigo *atual;
+    Vetor2 posicao_jogador = partida->jogador.posicao;
+
+    for (atual = partida->inimigos->inicio; atual != NULL; atual = atual->proximo) {
+        int esta_atras = atual->dados.posicao.y <= posicao_jogador.y;
+
+        if (esta_atras == atras_do_heroi) {
+            desenhar_inimigo(&atual->dados, imagens, posicao_jogador, partida->tempo_mundo);
         }
     }
 }
 
 /* Desenha uma lista de projéteis com a imagem dada ou um círculo da cor dada. */
 static void desenhar_projeteis(const Projetil projeteis[], int quantidade,
-                               Texture2D imagem, Color cor)
+                               const Sprite *imagem, Color cor)
 {
     int indice;
 
     for (indice = 0; indice < quantidade; indice++) {
-        if (imagem.id > 0) {
-            desenhar_imagem(imagem, projeteis[indice].posicao, 0, WHITE);
+        if (imagem->textura.id > 0) {
+            desenhar_sprite(imagem, projeteis[indice].posicao, 0, 0.0f, 0, WHITE);
         } else {
             DrawCircle((int)projeteis[indice].posicao.x, (int)projeteis[indice].posicao.y,
                        projeteis[indice].raio, cor);
@@ -85,31 +206,34 @@ static void desenhar_projeteis(const Projetil projeteis[], int quantidade,
 }
 
 /* Herói: pisca enquanto está invulnerável. Anel do pulso quando ele dispara. */
-static void desenhar_jogador(const Jogador *jogador, Texture2D imagem)
+static void desenhar_jogador(const Jogador *jogador, const Sprite *imagem, float tempo)
 {
     int piscando = jogador->tempo_invulneravel > 0.0f
                    && ((int)(jogador->tempo_invulneravel * 20.0f) % 2 == 0);
+    const Personagem *dados = dados_personagem(jogador->personagem);
 
     if (jogador->efeito_pulso > 0.0f) {
         DrawCircleLines((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->raio_pulso,
                         (Color){ 200, 170, 255, 255 });
     }
-    if (imagem.id > 0) {
-        desenhar_imagem(imagem, jogador->posicao, jogador->olhando_esquerda,
+    if (imagem->textura.id > 0) {
+        desenhar_sprite(imagem, jogador->posicao, jogador->olhando_esquerda,
+                        dados->altura_visual, escolher_quadro(imagem, jogador->andando, tempo, 0),
                         piscando ? (Color){ 255, 255, 255, 110 } : WHITE);
     } else {
         DrawCircle((int)jogador->posicao.x, (int)jogador->posicao.y, jogador->raio,
-                   piscando ? WHITE : dados_personagem(jogador->personagem)->cor);
+                   piscando ? WHITE : dados->cor);
     }
 }
 
 /* Portal: imagem (se existir) ou anéis que pulsam. */
-static void desenhar_portal(Vector2 posicao_portal, Texture2D imagem)
+static void desenhar_portal(Vector2 posicao_portal, const Sprite *imagem)
 {
     float pulso = 4.0f * sinf((float)GetTime() * 4.0f);
 
-    if (imagem.id > 0) {
-        desenhar_imagem(imagem, (Vetor2){ posicao_portal.x, posicao_portal.y }, 0, WHITE);
+    if (imagem->textura.id > 0) {
+        desenhar_sprite(imagem, (Vetor2){ posicao_portal.x, posicao_portal.y }, 0, 0.0f, 0,
+                        WHITE);
         return;
     }
     DrawCircle((int)posicao_portal.x, (int)posicao_portal.y, RAIO_PORTAL + pulso,
@@ -150,6 +274,12 @@ static void desenhar_barra(int posicao_x, int posicao_y, int largura, int altura
     DrawRectangle(posicao_x, posicao_y, (int)(largura * fracao), altura, cor);
 }
 
+/* Texto encostado na direita da tela (para nomes longos de mundo não saírem da janela). */
+static void desenhar_texto_direita(const char *texto, int posicao_y, int tamanho, Color cor)
+{
+    DrawText(texto, LARGURA_JANELA - MeasureText(texto, tamanho) - 20, posicao_y, tamanho, cor);
+}
+
 static void desenhar_hud(const Partida *partida)
 {
     const Jogador *jogador = &partida->jogador;
@@ -163,19 +293,19 @@ static void desenhar_hud(const Partida *partida)
              RAYWHITE);
     DrawText(TextFormat("Nível %d", jogador->nivel), 20, 46, 22, RAYWHITE);
     if (partida->portal_aberto) {
-        DrawText(TextFormat("%s   Portal aberto!", mundo->nome), LARGURA_JANELA - 360, 20, 24,
-                 (Color){ 200, 150, 255, 255 });
+        desenhar_texto_direita(TextFormat("%s   Portal aberto!", mundo->nome), 20, 24,
+                               (Color){ 200, 150, 255, 255 });
         desenhar_indicador_portal(partida);
     } else {
-        DrawText(TextFormat("%s   %d:%02d", mundo->nome, segundos / 60, segundos % 60),
-                 LARGURA_JANELA - 260, 20, 24, RAYWHITE);
+        desenhar_texto_direita(TextFormat("%s   %d:%02d", mundo->nome, segundos / 60,
+                                          segundos % 60), 20, 24, RAYWHITE);
     }
     if (partida->aviso_horda > 0.0f) {
         DrawText("HORDA!", (LARGURA_JANELA - MeasureText("HORDA!", 48)) / 2, 90, 48,
                  (Color){ 255, 90, 90, 255 });
     }
-    DrawText(TextFormat("Inimigos: %d", lista_contar(partida->inimigos)),
-             LARGURA_JANELA - 260, 52, 20, LIGHTGRAY);
+    desenhar_texto_direita(TextFormat("Inimigos: %d", lista_contar(partida->inimigos)), 52, 20,
+                           LIGHTGRAY);
 
     desenhar_barra(0, ALTURA_JANELA - ALTURA_BARRA_XP, LARGURA_JANELA, ALTURA_BARRA_XP,
                    (float)jogador->xp, (float)jogador_xp_para_proximo_nivel(jogador),
@@ -187,20 +317,33 @@ void desenho_partida(const Partida *partida, const Imagens *imagens, Camera2D ca
 {
     const Jogador *jogador = &partida->jogador;
 
+    /* Tremor: desloca a câmera um pouco, usando seno do tempo de jogo (assim para na
+     * pausa) e diminuindo até acabar. */
+    if (partida->tempo_tremor > 0.0f) {
+        float forca = FORCA_TREMOR * partida->tempo_tremor / DURACAO_TREMOR;
+
+        camera.offset.x += sinf(partida->tempo_mundo * 90.0f) * forca;
+        camera.offset.y += cosf(partida->tempo_mundo * 110.0f) * forca;
+    }
     ClearBackground((Color){ 24, 22, 36, 255 });
 
     BeginMode2D(camera);
-    desenhar_chao(camera, dados_mundo(partida->mundo), imagens->chao[partida->mundo]);
+    desenhar_chao(camera, dados_mundo(partida->mundo), &imagens->chao[partida->mundo]);
     if (partida->portal_aberto) {
         desenhar_portal((Vector2){ partida->posicao_portal.x, partida->posicao_portal.y },
-                        imagens->portal);
+                        &imagens->portal);
     }
-    desenhar_inimigos(partida->inimigos, imagens, jogador->posicao);
-    desenhar_projeteis(partida->projeteis, partida->qtd_projeteis, imagens->projetil_heroi,
+    desenhar_cenario(partida, imagens, camera, 1);    /* objetos acima do herói */
+    desenhar_sombras(partida, imagens);
+    desenhar_inimigos(partida, imagens, 1);          /* inimigos acima do herói */
+    desenhar_jogador(jogador, &imagens->personagens[jogador->personagem], partida->tempo_mundo);
+    desenhar_inimigos(partida, imagens, 0);          /* inimigos abaixo do herói */
+    desenhar_cenario(partida, imagens, camera, 0);    /* objetos abaixo do herói */
+    desenhar_projeteis(partida->projeteis, partida->qtd_projeteis, &imagens->projetil_heroi,
                        (Color){ 190, 150, 255, 255 });
     desenhar_projeteis(partida->tiros_inimigos, partida->qtd_tiros_inimigos,
-                       imagens->projetil_inimigo, (Color){ 255, 90, 90, 255 });
-    desenhar_jogador(jogador, imagens->personagens[jogador->personagem]);
+                       &imagens->projetil_inimigo, (Color){ 255, 90, 90, 255 });
+    desenhar_numeros_dano(partida);
     EndMode2D();
 
     desenhar_hud(partida);

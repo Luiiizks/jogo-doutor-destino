@@ -131,7 +131,11 @@ void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt)
         int parou_para_atirar = atual->dados.distancia_ataque > 0.0f
                                 && distancia <= atual->dados.distancia_ataque;
 
-        if (distancia > 0.001f && !parou_para_atirar) {   /* evita dividir por zero */
+        if (atual->dados.tempo_flash > 0.0f) {
+            atual->dados.tempo_flash -= dt;
+        }
+        atual->dados.andando = distancia > 0.001f && !parou_para_atirar;
+        if (atual->dados.andando) {                       /* evita dividir por zero */
             atual->dados.posicao.x += diferenca_x / distancia * passo;
             atual->dados.posicao.y += diferenca_y / distancia * passo;
         }
@@ -190,6 +194,7 @@ static int aplicar_dano(ListaInimigos *lista, NoInimigo *no, float dano, int *xp
 {
     no->dados.vida -= dano;
     if (no->dados.vida > 0.0f) {
+        no->dados.tempo_flash = DURACAO_FLASH_DANO;
         return 0;
     }
     *xp_ganho += no->dados.xp;

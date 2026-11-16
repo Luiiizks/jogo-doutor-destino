@@ -190,6 +190,8 @@ static void teste_projetil(void)
     lista_inserir_fim(lista, inimigo_em(3));
     conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) == 1, "perto: acerta");
     conferir(xp_ganho == 0 && lista_contar(lista) == 2, "vida 10 - dano 4: nao morre");
+    conferir(lista->fim->dados.tempo_flash > 0.0f || lista->inicio->dados.tempo_flash > 0.0f,
+             "quem levou dano fica com flash");
 
     projetil.dano = 50.0f;
     lista_colidir_com_projetil(lista, &projetil, &xp_ganho);
@@ -251,10 +253,12 @@ static void teste_atirador(void)
 
     lista_mover_todos(lista, jogador, 1.0f);
     conferir(lista->inicio->dados.posicao.x == 90.0f, "longe: continua andando");
+    conferir(lista->inicio->dados.andando == 1, "andando: andando = 1");
     lista_mover_todos(lista, jogador, 1.0f);
     lista->inicio->dados.posicao.x = 80.0f;
     lista_mover_todos(lista, jogador, 1.0f);
     conferir(lista->inicio->dados.posicao.x == 80.0f, "na distancia de ataque: para");
+    conferir(lista->inicio->dados.andando == 0, "parado: andando = 0");
 
     conferir(lista_coletar_tiros(lista, jogador, 0.5f, tiros, 4) == 0, "ainda recarregando");
     conferir(lista_coletar_tiros(lista, jogador, 0.6f, tiros, 4) == 1, "recarregou: atira");

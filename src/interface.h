@@ -34,6 +34,10 @@ void interface_desenhar_pausa(int selecionada);
 void interface_desenhar_derrota(int selecionada);
 void interface_desenhar_mundo_concluido(int selecionada);
 
+/* Tela entre um mundo e outro. Devolve 1 quando o jogador confirma (ENTER, ESPAÇO ou clique). */
+int interface_atualizar_transicao(void);
+void interface_desenhar_transicao(const char *mundo_concluido, const char *proximo_mundo);
+
 /* Level-up: devolve o índice da melhoria escolhida (teclas 1-3, setas + ENTER ou clique)
  * ou -1 se ainda não escolheu. */
 int interface_atualizar_level_up(int *selecionada, int quantidade);
