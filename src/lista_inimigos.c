@@ -134,6 +134,9 @@ void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt)
         if (atual->dados.tempo_flash > 0.0f) {
             atual->dados.tempo_flash -= dt;
         }
+        if (atual->dados.tempo_intangivel > 0.0f) {
+            atual->dados.tempo_intangivel -= dt;
+        }
         atual->dados.andando = distancia > 0.001f && !parou_para_atirar;
         if (atual->dados.andando) {                       /* evita dividir por zero */
             atual->dados.posicao.x += diferenca_x / distancia * passo;
@@ -210,8 +213,9 @@ int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
     for (atual = lista->inicio; atual != NULL; atual = atual->proximo) {
         float soma_raios = atual->dados.raio + projetil->raio;
 
-        if (distancia_quadrada_entre(atual->dados.posicao, projetil->posicao)
-            <= soma_raios * soma_raios) {
+        if (atual->dados.tempo_intangivel <= 0.0f
+            && distancia_quadrada_entre(atual->dados.posicao, projetil->posicao)
+               <= soma_raios * soma_raios) {
             aplicar_dano(lista, atual, projetil->dano, xp_ganho);
             return 1;
         }
@@ -230,7 +234,9 @@ int lista_dano_em_area(ListaInimigos *lista, Vetor2 centro, float raio, float da
         NoInimigo *proximo = atual->proximo;
         float soma_raios = atual->dados.raio + raio;
 
-        if (distancia_quadrada_entre(atual->dados.posicao, centro) <= soma_raios * soma_raios) {
+        if (atual->dados.tempo_intangivel <= 0.0f
+            && distancia_quadrada_entre(atual->dados.posicao, centro)
+               <= soma_raios * soma_raios) {
             aplicar_dano(lista, atual, dano, xp_ganho);
             atingidos++;
         }
@@ -250,7 +256,8 @@ float lista_dano_de_contato(const ListaInimigos *lista, Vetor2 posicao_jogador,
         float distancia_quadrada = distancia_quadrada_entre(atual->dados.posicao,
                                                             posicao_jogador);
 
-        if (distancia_quadrada <= soma_raios * soma_raios
+        if (atual->dados.tempo_intangivel <= 0.0f
+            && distancia_quadrada <= soma_raios * soma_raios
             && atual->dados.dano_contato > maior_dano) {
             maior_dano = atual->dados.dano_contato;
         }
@@ -268,15 +275,35 @@ int lista_esta_vazia(const ListaInimigos *lista)
     return lista->inicio == NULL;
 }
 
-void lista_destruir(ListaInimigos *lista)
+NoInimigo *lista_buscar_por_tipo(const ListaInimigos *lista, int tipo)
+{
+    NoInimigo *atual;
+
+    for (atual = lista->inicio; atual != NULL; atual = atual->proximo) {
+        if (atual->dados.tipo == tipo) {
+            return atual;
+        }
+    }
+    return NULL;
+}
+
+void lista_limpar(ListaInimigos *lista)
 {
     NoInimigo *atual = lista->inicio;
 
     while (atual != NULL) {
-        NoInimigo *proximo = atual->proximo;
+        NoInimigo *proximo = atual->proximo;     /* guarda antes do free */
 
         free(atual);
         atual = proximo;
     }
+    lista->inicio = NULL;
+    lista->fim = NULL;
+    lista->tamanho = 0;
+}
+
+void lista_destruir(ListaInimigos *lista)
+{
+    lista_limpar(lista);
     free(lista);
 }

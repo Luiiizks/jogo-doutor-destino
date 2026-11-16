@@ -18,7 +18,7 @@ typedef enum {
     TELA_PAUSA,
     TELA_LEVEL_UP,
     TELA_DERROTA,
-    TELA_MUNDO_CONCLUIDO,
+    TELA_VITORIA,
     TELA_TRANSICAO
 } Tela;
 
@@ -98,7 +98,7 @@ static void atualizar_jogando(Jogo *jogo)
     } else if (resultado == PARTIDA_MUNDO_CONCLUIDO) {
         jogo->opcao = 0;
         jogo->tela = partida_tem_proximo_mundo(&jogo->partida) ? TELA_TRANSICAO
-                                                               : TELA_MUNDO_CONCLUIDO;
+                                                               : TELA_VITORIA;
     } else {
         verificar_level_up(jogo);
     }
@@ -199,8 +199,8 @@ static void desenhar(const Jogo *jogo)
                                          dados_mundo(jogo->partida.mundo + 1)->nome);
         } else if (jogo->tela == TELA_DERROTA) {
             interface_desenhar_derrota(jogo->opcao);
-        } else if (jogo->tela == TELA_MUNDO_CONCLUIDO) {
-            interface_desenhar_mundo_concluido(jogo->opcao);
+        } else if (jogo->tela == TELA_VITORIA) {
+            interface_desenhar_vitoria(jogo->opcao);
         }
     }
 }

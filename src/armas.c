@@ -3,8 +3,10 @@
  * próximos, então o disparo só precisa pegar os N primeiros. */
 
 #include <math.h>
+#include <stddef.h>
 
 #include "armas.h"
+#include "dados.h"
 #include "jogador.h"
 
 /* Cria um projétil saindo do herói em direção a um alvo. Ignora se o vetor de projéteis
@@ -34,12 +36,20 @@ static void criar_projetil(Partida *partida, Vetor2 alvo)
 static void disparar_arcano(Partida *partida)
 {
     NoInimigo *alvos[MAX_ALVOS];
+    const NoInimigo *chefe;
     int qtd_alvos = lista_obter_mais_proximos(partida->inimigos, partida->jogador.qtd_alvos,
                                               alvos);
     int indice;
 
     for (indice = 0; indice < qtd_alvos; indice++) {
         criar_projetil(partida, alvos[indice]->dados.posicao);
+    }
+
+    /* Na arena, um tiro extra vai sempre para o chefe (se ele pode ser atingido), senão
+     * os reforços, que ficam mais perto, tomariam todos os disparos. */
+    chefe = lista_buscar_por_tipo(partida->inimigos, TIPO_CHEFE);
+    if (chefe != NULL && chefe->dados.tempo_intangivel <= 0.0f) {
+        criar_projetil(partida, chefe->dados.posicao);
     }
 }
 

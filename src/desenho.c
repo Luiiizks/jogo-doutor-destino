@@ -152,6 +152,15 @@ static void desenhar_cenario(const Partida *partida, const Imagens *imagens, Cam
     }
 }
 
+/* Cor de mistura do inimigo: translúcido se intangível, avermelhado se levou dano. */
+static Color escolher_tinta(const Inimigo *inimigo)
+{
+    if (inimigo->tempo_intangivel > 0.0f) {
+        return (Color){ 255, 255, 255, 90 };
+    }
+    return (inimigo->tempo_flash > 0.0f) ? (Color){ 255, 80, 80, 255 } : WHITE;
+}
+
 /* Desenha um inimigo (imagem ou círculo). */
 static void desenhar_inimigo(const Inimigo *inimigo, const Imagens *imagens,
                              Vetor2 posicao_jogador, float tempo)
@@ -164,10 +173,11 @@ static void desenhar_inimigo(const Inimigo *inimigo, const Imagens *imagens,
         desenhar_sprite(sprite, inimigo->posicao, posicao_jogador.x < inimigo->posicao.x,
                         dados->altura_visual,
                         escolher_quadro(sprite, inimigo->andando, tempo, inimigo->id),
-                        inimigo->tempo_flash > 0.0f ? (Color){ 255, 80, 80, 255 } : WHITE);
+                        escolher_tinta(inimigo));
     } else {
         DrawCircle((int)inimigo->posicao.x, (int)inimigo->posicao.y, inimigo->raio,
-                   inimigo->tempo_flash > 0.0f ? WHITE : dados->cor);
+                   inimigo->tempo_intangivel > 0.0f ? Fade(dados->cor, 0.35f)
+                   : (inimigo->tempo_flash > 0.0f ? WHITE : dados->cor));
     }
 }
 
@@ -274,25 +284,62 @@ static void desenhar_barra(int posicao_x, int posicao_y, int largura, int altura
     DrawRectangle(posicao_x, posicao_y, (int)(largura * fracao), altura, cor);
 }
 
+/* Escurece tudo fora da arena e desenha a borda dourada dela. */
+static void desenhar_paredes_da_arena(void)
+{
+    float esquerda = -ARENA_METADE_LARGURA;
+    float topo = -ARENA_METADE_ALTURA;
+    float largura = ARENA_METADE_LARGURA * 2.0f;
+    float altura = ARENA_METADE_ALTURA * 2.0f;
+    float margem = 2000.0f;          /* grande o bastante para cobrir a tela inteira */
+    Color escuro = { 8, 6, 12, 255 };
+
+    DrawRectangle((int)(esquerda - margem), (int)(topo - margem), (int)margem,
+                  (int)(altura + 2 * margem), escuro);
+    DrawRectangle((int)(esquerda + largura), (int)(topo - margem), (int)margem,
+                  (int)(altura + 2 * margem), escuro);
+    DrawRectangle((int)esquerda, (int)(topo - margem), (int)largura, (int)margem, escuro);
+    DrawRectangle((int)esquerda, (int)(topo + altura), (int)largura, (int)margem, escuro);
+    DrawRectangleLinesEx((Rectangle){ esquerda, topo, largura, altura }, 8.0f,
+                         (Color){ 200, 170, 60, 255 });
+}
+
 /* Texto encostado na direita da tela (para nomes longos de mundo não saírem da janela). */
 static void desenhar_texto_direita(const char *texto, int posicao_y, int tamanho, Color cor)
 {
     DrawText(texto, LARGURA_JANELA - MeasureText(texto, tamanho) - 20, posicao_y, tamanho, cor);
 }
 
-static void desenhar_hud(const Partida *partida)
+/* Barra de vida grande do chefe, no topo da tela, com aviso quando está intangível. */
+static void desenhar_barra_chefe(const Partida *partida)
 {
-    const Jogador *jogador = &partida->jogador;
+    const NoInimigo *chefe = lista_buscar_por_tipo(partida->inimigos, TIPO_CHEFE);
+    const TipoInimigo *dados = dados_tipo_inimigo(TIPO_CHEFE);
+    int largura = 600;
+    int posicao_x = (LARGURA_JANELA - largura) / 2;
+
+    if (chefe == NULL) {
+        return;
+    }
+    DrawText(dados->nome, posicao_x, 12, 24, RAYWHITE);
+    desenhar_barra(posicao_x, 42, largura, 22, chefe->dados.vida, dados->vida,
+                   (Color){ 70, 190, 110, 255 });
+    if (chefe->dados.tempo_intangivel > 0.0f) {
+        DrawText("INTANGÍVEL", posicao_x, 68, 20, (Color){ 200, 220, 255, 255 });
+    }
+}
+
+/* Informações do mundo no canto direito: tempo, portal ou nada (arena do chefe). */
+static void desenhar_info_do_mundo(const Partida *partida)
+{
     const Mundo *mundo = dados_mundo(partida->mundo);
     float tempo_restante = mundo->duracao - partida->tempo_mundo;
     int segundos = (int)ceilf(tempo_restante > 0.0f ? tempo_restante : 0.0f);
 
-    desenhar_barra(20, 20, LARGURA_BARRA_VIDA, ALTURA_BARRA, jogador->vida,
-                   jogador->vida_maxima, (Color){ 220, 70, 80, 255 });
-    DrawText(TextFormat("%d / %d", (int)jogador->vida, (int)jogador->vida_maxima), 28, 21, 16,
-             RAYWHITE);
-    DrawText(TextFormat("Nível %d", jogador->nivel), 20, 46, 22, RAYWHITE);
-    if (partida->portal_aberto) {
+    if (mundo->arena_chefe) {
+        desenhar_texto_direita(mundo->nome, 20, 24, (Color){ 230, 200, 90, 255 });
+        desenhar_barra_chefe(partida);
+    } else if (partida->portal_aberto) {
         desenhar_texto_direita(TextFormat("%s   Portal aberto!", mundo->nome), 20, 24,
                                (Color){ 200, 150, 255, 255 });
         desenhar_indicador_portal(partida);
@@ -300,8 +347,22 @@ static void desenhar_hud(const Partida *partida)
         desenhar_texto_direita(TextFormat("%s   %d:%02d", mundo->nome, segundos / 60,
                                           segundos % 60), 20, 24, RAYWHITE);
     }
+}
+
+static void desenhar_hud(const Partida *partida)
+{
+    const Jogador *jogador = &partida->jogador;
+
+    desenhar_barra(20, 20, LARGURA_BARRA_VIDA, ALTURA_BARRA, jogador->vida,
+                   jogador->vida_maxima, (Color){ 220, 70, 80, 255 });
+    DrawText(TextFormat("%d / %d", (int)jogador->vida, (int)jogador->vida_maxima), 28, 21, 16,
+             RAYWHITE);
+    DrawText(TextFormat("Nível %d", jogador->nivel), 20, 46, 22, RAYWHITE);
+    desenhar_info_do_mundo(partida);
     if (partida->aviso_horda > 0.0f) {
-        DrawText("HORDA!", (LARGURA_JANELA - MeasureText("HORDA!", 48)) / 2, 90, 48,
+        const char *aviso = partida_eh_arena(partida) ? "REFORÇOS!" : "HORDA!";
+
+        DrawText(aviso, (LARGURA_JANELA - MeasureText(aviso, 48)) / 2, 90, 48,
                  (Color){ 255, 90, 90, 255 });
     }
     desenhar_texto_direita(TextFormat("Inimigos: %d", lista_contar(partida->inimigos)), 52, 20,
@@ -344,6 +405,9 @@ void desenho_partida(const Partida *partida, const Imagens *imagens, Camera2D ca
     desenhar_projeteis(partida->tiros_inimigos, partida->qtd_tiros_inimigos,
                        &imagens->projetil_inimigo, (Color){ 255, 90, 90, 255 });
     desenhar_numeros_dano(partida);
+    if (partida_eh_arena(partida)) {
+        desenhar_paredes_da_arena();
+    }
     EndMode2D();
 
     desenhar_hud(partida);

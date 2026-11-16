@@ -25,6 +25,10 @@ typedef struct {
     float aviso_horda;         /* segundos restantes do aviso "HORDA!" na tela */
     int portal_aberto;         /* 1 depois que o tempo do mundo acaba */
     Vetor2 posicao_portal;
+    int chefe_criado;          /* mundo do chefe: 1 depois que ele nasceu */
+    int chefe_fase2;
+    float tempo_ate_reforcos;
+    float tempo_ate_intangivel;
 } Partida;
 
 typedef enum {
@@ -42,6 +46,9 @@ int partida_tem_proximo_mundo(const Partida *partida);
 /* Passa para o próximo mundo mantendo o herói (nível, melhorias) e curando parte da vida.
  * Devolve 0 se faltar memória. Chame só se partida_tem_proximo_mundo for 1. */
 int partida_proximo_mundo(Partida *partida);
+
+/* Devolve 1 se o mundo atual é a arena do chefe. */
+int partida_eh_arena(const Partida *partida);
 
 /* Libera a lista de inimigos (fim de mundo ou de partida). Pode chamar mais de uma vez. */
 void partida_encerrar(Partida *partida);

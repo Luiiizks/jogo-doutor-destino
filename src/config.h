@@ -21,6 +21,20 @@
 /* Troca de mundo */
 #define CURA_TROCA_MUNDO       0.5f   /* fração da vida máxima recuperada ao mudar de mundo */
 
+/* Chefe e arena (mundo 4) */
+#define ARENA_METADE_LARGURA     760.0f  /* a arena é um retângulo centrado em (0, 0) */
+#define ARENA_METADE_ALTURA      460.0f
+#define DISTANCIA_INICIAL_CHEFE  400.0f  /* o chefe nasce acima do herói, a esta distância */
+#define QTD_REFORCOS_CHEFE       6
+#define RAIO_REFORCOS_CHEFE      90.0f   /* os reforços nascem num círculo ao redor do chefe */
+#define MAX_INIMIGOS_ARENA       30      /* o chefe só invoca se houver menos que isto em cena */
+#define INTERVALO_REFORCOS       8.0f
+#define INTERVALO_REFORCOS_FASE2 5.0f
+#define INTERVALO_INTANGIVEL     14.0f   /* de quanto em quanto tempo o chefe fica intangível */
+#define DURACAO_INTANGIVEL       3.0f
+#define FASE2_FRACAO_VIDA        0.5f    /* abaixo desta fração da vida o chefe entra na fase 2 */
+#define FASE2_FATOR_VELOCIDADE   1.5f
+
 /* Hordas e portal */
 #define INTERVALO_HORDA          30.0f   /* segundos entre hordas grandes */
 #define HORDA_TAMANHO_BASE       10      /* inimigos da primeira horda */

@@ -32,7 +32,7 @@ void interface_desenhar_menu_principal(int selecionada);
 void interface_desenhar_como_jogar(void);
 void interface_desenhar_pausa(int selecionada);
 void interface_desenhar_derrota(int selecionada);
-void interface_desenhar_mundo_concluido(int selecionada);
+void interface_desenhar_vitoria(int selecionada);
 
 /* Tela entre um mundo e outro. Devolve 1 quando o jogador confirma (ENTER, ESPAÇO ou clique). */
 int interface_atualizar_transicao(void);

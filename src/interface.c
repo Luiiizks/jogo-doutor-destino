@@ -133,10 +133,12 @@ void interface_desenhar_derrota(int selecionada)
     desenhar_opcoes(rotulos_fim, TOTAL_OPCOES_FIM, selecionada);
 }
 
-void interface_desenhar_mundo_concluido(int selecionada)
+void interface_desenhar_vitoria(int selecionada)
 {
     escurecer_tela();
-    desenhar_texto_centralizado("Mundo concluído!", 200, 56, (Color){ 120, 220, 140, 255 });
+    desenhar_texto_centralizado("VITÓRIA!", 150, 72, GOLD);
+    desenhar_texto_centralizado("Doutor Destino foi derrotado e o multiverso está salvo.", 250,
+                                26, RAYWHITE);
     desenhar_opcoes(rotulos_fim, TOTAL_OPCOES_FIM, selecionada);
 }
 

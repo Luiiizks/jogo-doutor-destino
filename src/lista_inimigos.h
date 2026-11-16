@@ -45,8 +45,8 @@ int lista_obter_mais_proximos(const ListaInimigos *lista, int quantidade,
  * distância para atirar. O(n) */
 void lista_mover_todos(ListaInimigos *lista, Vetor2 posicao_jogador, float dt);
 
-/* Testa um projétil contra os inimigos. Se acertar o primeiro que encontrar, aplica o
- * dano, remove o inimigo se morreu e soma o xp dele em *xp_ganho.
+/* Testa um projétil contra os inimigos (intangíveis são atravessados). Se acertar o primeiro
+ * que encontrar, aplica o dano, remove o inimigo se morreu e soma o xp dele em *xp_ganho.
  * Devolve 1 se acertou e 0 se não. O(n) */
 int lista_colidir_com_projetil(ListaInimigos *lista, const Projetil *projetil,
                                int *xp_ganho);
@@ -71,6 +71,13 @@ int lista_contar(const ListaInimigos *lista);
 
 /* Devolve 1 se a lista não tem nenhum inimigo. O(1) */
 int lista_esta_vazia(const ListaInimigos *lista);
+
+/* Devolve o primeiro inimigo do tipo pedido (ou NULL se não houver). Usado para achar o
+ * chefe. O ponteiro vale só até a próxima ordenação. O(n) */
+NoInimigo *lista_buscar_por_tipo(const ListaInimigos *lista, int tipo);
+
+/* Remove todos os inimigos, mas mantém a lista vazia e pronta para uso. O(n) */
+void lista_limpar(ListaInimigos *lista);
 
 /* Libera todos os nós e a própria lista. O(n) */
 void lista_destruir(ListaInimigos *lista);

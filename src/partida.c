@@ -25,6 +25,10 @@ static int preparar_mundo(Partida *partida, int indice_mundo)
     partida->hordas_ocorridas = 0;
     partida->aviso_horda = 0.0f;
     partida->portal_aberto = 0;
+    partida->chefe_criado = 0;
+    partida->chefe_fase2 = 0;
+    partida->tempo_ate_reforcos = INTERVALO_REFORCOS;
+    partida->tempo_ate_intangivel = INTERVALO_INTANGIVEL;
     return partida->inimigos != NULL;
 }
 
@@ -55,11 +59,33 @@ int partida_proximo_mundo(Partida *partida)
     return preparar_mundo(partida, partida->mundo + 1);
 }
 
+int partida_eh_arena(const Partida *partida)
+{
+    return dados_mundo(partida->mundo)->arena_chefe;
+}
+
 void partida_encerrar(Partida *partida)
 {
     if (partida->inimigos != NULL) {
         lista_destruir(partida->inimigos);
         partida->inimigos = NULL;
+    }
+}
+
+/* Na arena do chefe o herói não pode sair do retângulo. */
+static void limitar_jogador_na_arena(Jogador *jogador)
+{
+    if (jogador->posicao.x < -ARENA_METADE_LARGURA) {
+        jogador->posicao.x = -ARENA_METADE_LARGURA;
+    }
+    if (jogador->posicao.x > ARENA_METADE_LARGURA) {
+        jogador->posicao.x = ARENA_METADE_LARGURA;
+    }
+    if (jogador->posicao.y < -ARENA_METADE_ALTURA) {
+        jogador->posicao.y = -ARENA_METADE_ALTURA;
+    }
+    if (jogador->posicao.y > ARENA_METADE_ALTURA) {
+        jogador->posicao.y = ARENA_METADE_ALTURA;
     }
 }
 
@@ -69,6 +95,9 @@ ResultadoPartida partida_atualizar(Partida *partida, float dt)
     float vida_antes = jogador->vida;
 
     jogador_atualizar(jogador, dt);
+    if (partida_eh_arena(partida)) {
+        limitar_jogador_na_arena(jogador);
+    }
     mundos_atualizar(partida, dt);                                  /* spawn: insere na lista */
     lista_mover_todos(partida->inimigos, jogador->posicao, dt);
     lista_ordenar_por_distancia(partida->inimigos, jogador->posicao);  /* prepara a mira */
@@ -84,7 +113,9 @@ ResultadoPartida partida_atualizar(Partida *partida, float dt)
     if (jogador->vida <= 0.0f) {
         return PARTIDA_DERROTA;
     }
-    if (mundos_jogador_no_portal(partida)) {
+    if (mundos_concluido(partida)) {
+        lista_limpar(partida->inimigos);             /* chefe caiu: os reforços somem */
+        partida->qtd_tiros_inimigos = 0;
         return PARTIDA_MUNDO_CONCLUIDO;
     }
     return PARTIDA_EM_ANDAMENTO;

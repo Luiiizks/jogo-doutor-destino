@@ -1,7 +1,8 @@
-/* mundos.c - controle do tempo do mundo, spawn dos inimigos, hordas e portal.
+/* mundos.c - controle do tempo do mundo, spawn dos inimigos, hordas, portal e chefe.
  * Cada inimigo que nasce é inserido no fim da lista de inimigos. */
 
 #include <math.h>
+#include <stddef.h>
 
 #include "raylib.h"
 #include "dados.h"
@@ -80,11 +81,70 @@ static void abrir_portal(Partida *partida)
     partida->portal_aberto = 1;
 }
 
+/* Faz o chefe nascer acima do herói (só uma vez, no começo da arena). */
+static void criar_chefe(Partida *partida)
+{
+    Vetor2 posicao = partida->jogador.posicao;
+
+    posicao.y -= DISTANCIA_INICIAL_CHEFE;
+    lista_inserir_fim(partida->inimigos, dados_criar_inimigo(TIPO_CHEFE, posicao));
+    partida->chefe_criado = 1;
+}
+
+/* O chefe invoca Doombots num círculo ao redor dele (várias inserções na lista). */
+static void invocar_reforcos(Partida *partida, Vetor2 centro)
+{
+    int indice;
+
+    for (indice = 0; indice < QTD_REFORCOS_CHEFE
+                     && lista_contar(partida->inimigos) < MAX_INIMIGOS_ARENA; indice++) {
+        float angulo = 360.0f * (float)indice / (float)QTD_REFORCOS_CHEFE;
+        Vetor2 posicao = ponto_no_angulo(centro, angulo, RAIO_REFORCOS_CHEFE);
+
+        lista_inserir_fim(partida->inimigos, dados_criar_inimigo(TIPO_DOOMBOT, posicao));
+    }
+    partida->aviso_horda = DURACAO_AVISO_HORDA;
+}
+
+/* Comportamento do chefe a cada quadro: fase 2, reforços periódicos e intangibilidade. */
+static void atualizar_chefe(Partida *partida, float dt)
+{
+    NoInimigo *chefe;
+    float vida_maxima = dados_tipo_inimigo(TIPO_CHEFE)->vida;
+
+    if (!partida->chefe_criado) {
+        criar_chefe(partida);
+    }
+    chefe = lista_buscar_por_tipo(partida->inimigos, TIPO_CHEFE);
+    if (chefe == NULL) {
+        return;                                  /* chefe derrotado */
+    }
+    if (!partida->chefe_fase2 && chefe->dados.vida < vida_maxima * FASE2_FRACAO_VIDA) {
+        partida->chefe_fase2 = 1;                /* fica mais rápido e invoca mais seguido */
+        chefe->dados.velocidade *= FASE2_FATOR_VELOCIDADE;
+    }
+    partida->tempo_ate_reforcos -= dt;
+    partida->tempo_ate_intangivel -= dt;
+    if (partida->tempo_ate_reforcos <= 0.0f) {
+        partida->tempo_ate_reforcos = partida->chefe_fase2 ? INTERVALO_REFORCOS_FASE2
+                                                           : INTERVALO_REFORCOS;
+        invocar_reforcos(partida, chefe->dados.posicao);
+    }
+    if (partida->tempo_ate_intangivel <= 0.0f) {
+        partida->tempo_ate_intangivel = INTERVALO_INTANGIVEL;
+        chefe->dados.tempo_intangivel = DURACAO_INTANGIVEL;
+    }
+}
+
 void mundos_atualizar(Partida *partida, float dt)
 {
     const Mundo *mundo = dados_mundo(partida->mundo);
 
     partida->tempo_mundo += dt;
+    if (mundo->arena_chefe) {
+        atualizar_chefe(partida, dt);
+        return;
+    }
     partida->tempo_ate_spawn -= dt;
     partida->tempo_ate_horda -= dt;
     if (partida->aviso_horda > 0.0f) {
@@ -106,7 +166,8 @@ void mundos_atualizar(Partida *partida, float dt)
     }
 }
 
-int mundos_jogador_no_portal(const Partida *partida)
+/* Portal aberto e herói encostando nele? */
+static int jogador_no_portal(const Partida *partida)
 {
     float diferenca_x = partida->jogador.posicao.x - partida->posicao_portal.x;
     float diferenca_y = partida->jogador.posicao.y - partida->posicao_portal.y;
@@ -114,4 +175,13 @@ int mundos_jogador_no_portal(const Partida *partida)
 
     return partida->portal_aberto
            && diferenca_x * diferenca_x + diferenca_y * diferenca_y <= soma_raios * soma_raios;
+}
+
+int mundos_concluido(const Partida *partida)
+{
+    if (dados_mundo(partida->mundo)->arena_chefe) {
+        return partida->chefe_criado
+               && lista_buscar_por_tipo(partida->inimigos, TIPO_CHEFE) == NULL;
+    }
+    return jogador_no_portal(partida);
 }

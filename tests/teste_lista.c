@@ -267,6 +267,46 @@ static void teste_atirador(void)
     lista_destruir(lista);
 }
 
+static void teste_chefe_e_limpar(void)
+{
+    ListaInimigos *lista = lista_criar();
+    Vetor2 jogador = { 0, 0 };
+    Projetil projetil = { { 0, 0 }, { 0, 0 }, 50.0f, 2.0f, 1.0f };
+    Inimigo chefe = inimigo_em(3);
+    NoInimigo *encontrado;
+    int xp_ganho = 0;
+
+    printf("chefe intangivel, buscar por tipo e limpar\n");
+    chefe.tipo = 7;
+    chefe.vida = 500.0f;
+    chefe.dano_contato = 25.0f;
+    lista_inserir_fim(lista, inimigo_em(100));
+    lista_inserir_fim(lista, chefe);
+
+    encontrado = lista_buscar_por_tipo(lista, 7);
+    conferir(encontrado != NULL && encontrado->dados.posicao.x == 3, "acha o inimigo do tipo 7");
+    conferir(lista_buscar_por_tipo(lista, 9) == NULL, "tipo inexistente: NULL");
+
+    encontrado->dados.tempo_intangivel = 2.0f;
+    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) == 0,
+             "projetil atravessa o intangivel");
+    conferir(lista_dano_em_area(lista, jogador, 30.0f, 50.0f, &xp_ganho) == 0,
+             "dano em area nao pega o intangivel");
+    conferir(lista_dano_de_contato(lista, jogador, 7.0f) == 0.0f,
+             "intangivel nao causa dano de contato");
+
+    lista_mover_todos(lista, jogador, 3.0f);
+    conferir(lista_colidir_com_projetil(lista, &projetil, &xp_ganho) >= 0
+             && lista_buscar_por_tipo(lista, 7)->dados.tempo_intangivel <= 0.0f,
+             "intangibilidade acaba com o tempo");
+
+    lista_limpar(lista);
+    conferir(lista_esta_vazia(lista) && lista_contar(lista) == 0, "limpar deixa a lista vazia");
+    lista_inserir_fim(lista, inimigo_em(1));
+    conferir(lista_contar(lista) == 1, "lista continua utilizavel depois de limpar");
+    lista_destruir(lista);
+}
+
 int main(void)
 {
     teste_inserir_e_contar();
@@ -279,6 +319,7 @@ int main(void)
     teste_dano_em_area();
     teste_dano_de_contato();
     teste_atirador();
+    teste_chefe_e_limpar();
 
     printf("\n%d conferencias, %d falhas\n", total_conferencias, total_falhas);
     return total_falhas == 0 ? 0 : 1;

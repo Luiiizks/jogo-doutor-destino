@@ -1,6 +1,8 @@
 /* dados.c - tabelas de conteúdo do jogo.
  * Aqui ficam os números de cada inimigo, personagem, mundo e upgrade. */
 
+#include <stddef.h>
+
 #include "dados.h"
 
 /* altura_visual: quanto o desenho aparece de alto na tela (em pixels), contando só a parte
@@ -44,6 +46,11 @@ static const TipoInimigo tipos_inimigo[TOTAL_TIPOS_INIMIGO] = {
         .arquivo_imagem = "assets/sprites/inimigo_espectro.png",
         .arquivo_caminhada = "assets/sprites/inimigo_espectro_walk.png",
         .quadros_caminhada = 4, .altura_visual = 52.0f },
+    [TIPO_CHEFE] = {
+        .nome = "Doutor Destino", .vida = 1500.0f, .velocidade = 35.0f, .dano_contato = 25.0f,
+        .raio = 40.0f, .xp = 0, .cor = { 40, 120, 70, 255 },
+        .arquivo_imagem = "assets/sprites/chefe_destino.png",
+        .arquivo_caminhada = NULL, .quadros_caminhada = 0, .altura_visual = 160.0f },
 };
 
 static const Personagem personagens[] = {
@@ -111,6 +118,20 @@ static const Mundo mundos[] = {
             { "assets/cenario/m3_galho.png", 72.0f },
             { "assets/cenario/m3_olho.png", 40.0f },
             { "assets/cenario/m3_fragmento.png", 48.0f },
+        },
+        .qtd_objetos = 5,
+    },
+    {
+        /* Mundo do chefe: sem tempo, sem spawn comum e sem portal (ver mundos.c). */
+        .nome = "Castelo de Destino", .arena_chefe = 1,
+        .cor_linhas_chao = { 80, 70, 40, 255 },
+        .arquivo_chao = "assets/chao/chao_mundo4.png",
+        .objetos = {
+            { "assets/cenario/m4_coluna.png", 96.0f },
+            { "assets/cenario/m4_tocha.png", 64.0f },
+            { "assets/cenario/m4_armadura.png", 72.0f },
+            { "assets/cenario/m4_tapete.png", 40.0f },
+            { "assets/cenario/m4_brasao.png", 56.0f },
         },
         .qtd_objetos = 5,
     },

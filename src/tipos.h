@@ -22,6 +22,7 @@ typedef struct {
     int xp;                    /* experiência dada ao morrer */
     int andando;               /* 1 se andou neste quadro (usado na animação) */
     float tempo_flash;         /* segundos restantes do brilho de "levou dano" */
+    float tempo_intangivel;    /* enquanto > 0 não leva dano nem causa dano (chefe) */
     float distancia_quadrada;  /* distância² até o herói (calculada na ordenação) */
 
     /* ataque à distância (distancia_ataque 0 = só corpo a corpo) */

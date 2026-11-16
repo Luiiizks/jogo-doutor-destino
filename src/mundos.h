@@ -7,10 +7,13 @@
 
 /* Conta o tempo do mundo e faz inimigos nascerem (inserem na lista): um de cada vez,
  * num intervalo que diminui, e uma horda grande de tempos em tempos. Quando o tempo do
- * mundo acaba, abre o portal; os inimigos continuam nascendo até o herói entrar nele. */
+ * mundo acaba, abre o portal; os inimigos continuam nascendo até o herói entrar nele.
+ * Na arena do chefe não há spawn comum: o chefe nasce, invoca reforços e fica intangível
+ * de vez em quando. */
 void mundos_atualizar(Partida *partida, float dt);
 
-/* Devolve 1 se o portal já abriu e o herói está encostando nele. */
-int mundos_jogador_no_portal(const Partida *partida);
+/* Devolve 1 se o mundo terminou: nos mundos normais, o herói encostou no portal aberto;
+ * na arena, o chefe já nasceu e não está mais na lista (foi derrotado). */
+int mundos_concluido(const Partida *partida);
 
 #endif

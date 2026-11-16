@@ -18,6 +18,7 @@ typedef enum {
     TIPO_DOOMBOT_ELITE,
     TIPO_SENTINELA,
     TIPO_ESPECTRO,
+    TIPO_CHEFE,
     TOTAL_TIPOS_INIMIGO
 } IndiceTipoInimigo;
 
@@ -73,6 +74,7 @@ typedef struct {
     const char *arquivo_chao;
     ObjetoCenario objetos[MAX_OBJETOS_POR_MUNDO];
     int qtd_objetos;
+    int arena_chefe;                        /* 1 = mundo do chefe (arena, sem portal) */
 } Mundo;
 
 const TipoInimigo *dados_tipo_inimigo(int tipo);
