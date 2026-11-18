@@ -1,4 +1,4 @@
-# Doomsday Survivors
+# Doomsday Survivors 
 
 Jogo 2D de sobrevivência feito em C com a biblioteca raylib, inspirado no filme *Vingadores:
 Doutor Destino*. É um trabalho de Algoritmos e Estruturas de Dados (AED, 2026.2), no tema "Ode ao
