@@ -136,3 +136,8 @@ Makefile
 ## Imagens
 O jogo carrega as imagens de `assets/` quando elas existem. Sem alguma delas, ele desenha uma
 forma simples no lugar e continua funcionando.
+
+## Integrantes
+- Luiz Flavius Veras
+- Gabriel Pontes
+- Mariana Correia
