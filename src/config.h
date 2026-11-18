@@ -37,15 +37,28 @@
 #define INTERVALO_REFORCOS_FASE2 5.0f
 #define INTERVALO_INTANGIVEL     14.0f   /* de quanto em quanto tempo o chefe fica intangível */
 #define DURACAO_INTANGIVEL       3.0f
+#define INTERVALO_ATAQUE_CHEFE   4.0f    /* de quanto em quanto tempo o chefe ataca com orbes */
+#define INTERVALO_ATAQUE_FASE2   2.5f
+#define DANO_ORBE_CHEFE          12.0f
+#define RAIO_ORBE_CHEFE          9.0f
+#define DURACAO_ORBE_CHEFE       4.0f
+#define ORBES_PULSO              16      /* ataque 1: anel de orbes que sai do chefe */
+#define VELOCIDADE_ORBE_PULSO    190.0f
+#define ORBES_CERCO              18      /* ataque 2: anel de orbes que fecha em volta do herói */
+#define BRECHA_CERCO             3       /* orbes que faltam no anel, para o herói escapar */
+#define DISTANCIA_CERCO          340.0f
+#define VELOCIDADE_ORBE_CERCO    120.0f
 #define FASE2_FRACAO_VIDA        0.5f    /* abaixo desta fração da vida o chefe entra na fase 2 */
 #define FASE2_FATOR_VELOCIDADE   1.5f
 
 /* Hordas e portal */
-#define INTERVALO_HORDA          30.0f   /* segundos entre hordas grandes */
-#define HORDA_TAMANHO_BASE       10      /* inimigos da primeira horda */
+#define INTERVALO_HORDA          25.0f   /* segundos entre hordas grandes */
+#define HORDA_TAMANHO_BASE       12      /* inimigos da primeira horda */
 #define HORDA_TAMANHO_CRESCIMENTO 5      /* inimigos a mais a cada horda seguinte */
 #define HORDA_ABERTURA_GRAUS     30      /* a horda vem de um lado, espalhada nesse ângulo */
 #define DURACAO_AVISO_HORDA      3.0f
+#define HORDAS_ATE_CERCO         3       /* a cada 3ª horda os inimigos formam um cerco */
+#define DISTANCIA_EXTRA_CERCO    80.0f   /* o cerco nasce um pouco além do spawn comum */
 #define DISTANCIA_PORTAL         500.0f  /* onde o portal abre, longe do herói */
 #define RAIO_PORTAL              40.0f
 
@@ -82,6 +95,7 @@
 #define ELITES_POR_HORDA_MAX   2
 
 /* Inimigos ficam mais fortes: durante o mundo e a cada mundo novo */
+#define VIDA_BASE_INIMIGO           1.2f   /* todo inimigo nasce com +20% de vida */
 #define CRESCIMENTO_VIDA_NO_MUNDO   0.4f   /* +40% de vida do começo ao fim do mundo */
 #define CRESCIMENTO_VIDA_POR_MUNDO  0.2f   /* +20% de vida a cada mundo seguinte */
 
@@ -118,12 +132,21 @@
 #define BONUS_RAIO_ALCANCE   15.0f  /* ...e raio da onda de impacto */
 #define BONUS_DANO_PULSO     4.0f   /* "Mais dano" também reforça o pulso/onda */
 #define BONUS_RAIO_PULSO     8.0f
+#define BONUS_ARMADURA       0.08f  /* cada nível tira 8% do dano que o herói recebe */
+#define BONUS_REGENERACAO    0.5f   /* vida por segundo, por nível */
+#define BONUS_CRITICO        8      /* % de chance de crítico, por nível */
+#define FATOR_CRITICO        2.0f   /* o crítico dá o dobro de dano */
 #define NIVEL_NOVA_ARMA      3      /* a partir deste nível a carta "Nova arma" é oferecida */
 #define INTERVALO_ENTRE_GOLPES 0.22f /* segundos entre os golpes seguidos da onda */
 
+/* Dash (ESPAÇO): impulso curto na direção em que o herói anda, sem levar dano */
+#define DURACAO_DASH         0.2f
+#define ESPERA_DASH          3.0f
+#define FATOR_VELOCIDADE_DASH 3.5f
+
 /* Pulso de energia (upgrade) */
 #define INTERVALO_PULSO      3.0f
-#define RAIO_PULSO_BASE      90.0f
+#define RAIO_PULSO_BASE      70.0f
 #define RAIO_PULSO_POR_NIVEL 25.0f
 #define DANO_PULSO_BASE      15.0f
 #define DANO_PULSO_POR_NIVEL 8.0f

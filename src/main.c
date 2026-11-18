@@ -56,10 +56,15 @@ static void iniciar_partida(Jogo *jogo)
     jogo->opcao = 0;
 }
 
-/* Fim da partida (derrota ou vitória): coloca a pontuação no ranking e grava o arquivo. */
+/* Fim da partida (derrota ou vitória): coloca a pontuação no ranking e grava o arquivo.
+ * Só o modo normal entra no ranking (o modo rápido é demonstração): nele a posição fica -1. */
 static void registrar_pontuacao(Jogo *jogo)
 {
     jogo->pontuacao_final = partida_pontuacao(&jogo->partida);
+    if (jogo->modo == MODO_RAPIDO) {
+        jogo->posicao_ranking = -1;
+        return;
+    }
     jogo->posicao_ranking = ranking_registrar(&jogo->ranking, jogo->nome,
                                               jogo->pontuacao_final);
     ranking_salvar(&jogo->ranking, ARQUIVO_RANKING);

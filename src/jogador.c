@@ -40,6 +40,7 @@ static void mover_pelo_teclado(Jogador *jogador, float dt)
 {
     float direcao_x = 0.0f;
     float direcao_y = 0.0f;
+    float velocidade = jogador->velocidade;
     float tamanho;
 
     if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
@@ -61,9 +62,19 @@ static void mover_pelo_teclado(Jogador *jogador, float dt)
     if (direcao_x != 0.0f) {
         jogador->olhando_esquerda = direcao_x < 0.0f;
     }
+
+    /* Dash: ESPAÇO dá um impulso curto, e o herói não leva dano enquanto ele dura. */
+    if (IsKeyPressed(KEY_SPACE) && jogador->espera_dash <= 0.0f && tamanho > 0.0f) {
+        jogador->tempo_dash = DURACAO_DASH;
+        jogador->espera_dash = ESPERA_DASH;
+        jogador->tempo_invulneravel = DURACAO_DASH;
+    }
+    if (jogador->tempo_dash > 0.0f) {
+        velocidade *= FATOR_VELOCIDADE_DASH;
+    }
     if (tamanho > 0.0f) {
-        jogador->posicao.x += direcao_x / tamanho * jogador->velocidade * dt;
-        jogador->posicao.y += direcao_y / tamanho * jogador->velocidade * dt;
+        jogador->posicao.x += direcao_x / tamanho * velocidade * dt;
+        jogador->posicao.y += direcao_y / tamanho * velocidade * dt;
     }
 }
 
@@ -73,6 +84,14 @@ void jogador_atualizar(Jogador *jogador, float dt)
     if (jogador->tempo_invulneravel > 0.0f) {
         jogador->tempo_invulneravel -= dt;
     }
+    jogador->tempo_dash -= dt;
+    jogador->espera_dash -= dt;
+    if (jogador->vida < jogador->vida_maxima) {         /* regeneração (upgrade) */
+        jogador->vida += jogador->regeneracao * dt;
+        if (jogador->vida > jogador->vida_maxima) {
+            jogador->vida = jogador->vida_maxima;
+        }
+    }
 }
 
 void jogador_receber_dano(Jogador *jogador, float dano)
@@ -80,7 +99,7 @@ void jogador_receber_dano(Jogador *jogador, float dano)
     if (dano <= 0.0f || jogador->tempo_invulneravel > 0.0f) {
         return;
     }
-    jogador->vida -= dano;
+    jogador->vida -= dano * (1.0f - jogador->reducao_dano);   /* armadura */
     jogador->tempo_invulneravel = TEMPO_INVULNERAVEL;
 }
 
@@ -189,6 +208,12 @@ void jogador_aplicar_upgrade(Jogador *jogador, TipoUpgrade upgrade)
         jogador->vida += BONUS_VIDA;
     } else if (upgrade == UPGRADE_IMA) {
         jogador->raio_ima += BONUS_RAIO_IMA;
+    } else if (upgrade == UPGRADE_ARMADURA) {
+        jogador->reducao_dano += BONUS_ARMADURA;
+    } else if (upgrade == UPGRADE_REGENERACAO) {
+        jogador->regeneracao += BONUS_REGENERACAO;
+    } else if (upgrade == UPGRADE_CRITICO) {
+        jogador->chance_critico += BONUS_CRITICO;
     } else {
         ganhar_segunda_arma(jogador);
     }

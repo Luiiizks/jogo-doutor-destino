@@ -44,7 +44,7 @@ static void ajustar_forca(const Partida *partida, Inimigo *inimigo, int elite)
     if (progresso > 1.0f) {
         progresso = 1.0f;
     }
-    fator_vida = 1.0f + CRESCIMENTO_VIDA_NO_MUNDO * progresso
+    fator_vida = VIDA_BASE_INIMIGO + CRESCIMENTO_VIDA_NO_MUNDO * progresso
                  + CRESCIMENTO_VIDA_POR_MUNDO * (float)partida->mundo;
     inimigo->vida *= fator_vida;
     if (elite) {
@@ -75,26 +75,37 @@ static void spawn_comum(Partida *partida, const Mundo *mundo)
                                                   RAIO_SPAWN), 0);
 }
 
-/* Horda: vários inimigos de uma vez, vindos do mesmo lado e crescendo a cada horda. */
+/* Horda: vários inimigos de uma vez, crescendo a cada horda. Normalmente vêm todos do mesmo
+ * lado; a cada HORDAS_ATE_CERCO hordas é um cerco: o dobro de inimigos, espalhados em
+ * círculo ao redor do herói. */
 static void criar_horda(Partida *partida, const Mundo *mundo)
 {
     float angulo_central = (float)GetRandomValue(0, 359);
     int quantidade = HORDA_TAMANHO_BASE + HORDA_TAMANHO_CRESCIMENTO * partida->hordas_ocorridas;
     int qtd_elites = GetRandomValue(ELITES_POR_HORDA_MIN, ELITES_POR_HORDA_MAX);
+    int cerco = (partida->hordas_ocorridas + 1) % HORDAS_ATE_CERCO == 0;
     int indice;
 
+    if (cerco) {
+        quantidade *= 2;
+    }
     for (indice = 0; indice < quantidade && lista_contar(partida->inimigos) < LIMITE_INIMIGOS;
          indice++) {
         float angulo = angulo_central + (float)GetRandomValue(-HORDA_ABERTURA_GRAUS,
                                                               HORDA_ABERTURA_GRAUS);
         float distancia = RAIO_SPAWN + (float)GetRandomValue(0, 100);
 
+        if (cerco) {
+            angulo = 360.0f * (float)indice / (float)quantidade;
+            distancia = RAIO_SPAWN + DISTANCIA_EXTRA_CERCO;
+        }
         /* Os primeiros da horda são os elites (1 ou 2 por horda). */
         criar_inimigo(partida, mundo, ponto_no_angulo(partida->jogador.posicao, angulo,
                                                       distancia), indice < qtd_elites);
     }
     partida->hordas_ocorridas++;
     partida->aviso_horda = DURACAO_AVISO_HORDA;
+    partida->aviso_cerco = cerco;
 }
 
 /* Abre o portal longe do herói (só uma vez, quando o tempo do mundo acaba). */
@@ -138,7 +149,60 @@ static void invocar_reforcos(Partida *partida, Vetor2 centro)
     partida->aviso_horda = DURACAO_AVISO_HORDA;
 }
 
-/* Comportamento do chefe a cada quadro: fase 2, reforços periódicos e intangibilidade. */
+/* Cria um orbe do chefe. Ele fica no mesmo vetor dos tiros dos magos, então o movimento, o
+ * dano no herói e o desenho já existem. "velocidade" positiva afasta o orbe do centro e
+ * negativa aproxima. */
+static void criar_orbe(Partida *partida, Vetor2 centro, float angulo_graus, float distancia,
+                       float velocidade)
+{
+    float angulo = angulo_graus * GRAUS_PARA_RADIANOS;
+    Projetil *orbe;
+
+    if (partida->qtd_tiros_inimigos >= MAX_TIROS_INIMIGOS) {
+        return;
+    }
+    orbe = &partida->tiros_inimigos[partida->qtd_tiros_inimigos];
+    *orbe = (Projetil){ 0 };
+    orbe->posicao = ponto_no_angulo(centro, angulo_graus, distancia);
+    orbe->velocidade.x = cosf(angulo) * velocidade;
+    orbe->velocidade.y = sinf(angulo) * velocidade;
+    orbe->dano = DANO_ORBE_CHEFE;
+    orbe->raio = RAIO_ORBE_CHEFE;
+    orbe->tempo_restante = DURACAO_ORBE_CHEFE;
+    partida->qtd_tiros_inimigos++;
+}
+
+/* Ataque 1 (pulso): um anel de orbes sai do chefe para todos os lados. Cada pulso gira o
+ * anel um pouco, para os vãos entre os orbes não ficarem sempre no mesmo lugar. */
+static void atacar_com_pulso(Partida *partida, Vetor2 posicao_chefe)
+{
+    float giro = (float)(partida->ataques_chefe * 11);
+    int indice;
+
+    for (indice = 0; indice < ORBES_PULSO; indice++) {
+        criar_orbe(partida, posicao_chefe, giro + 360.0f * (float)indice / (float)ORBES_PULSO,
+                   50.0f, VELOCIDADE_ORBE_PULSO);
+    }
+}
+
+/* Ataque 2 (cerco): um anel de orbes nasce longe do herói e vai fechando até ele. Faltam
+ * BRECHA_CERCO orbes num lugar sorteado: é por esse vão que o herói precisa escapar. */
+static void atacar_com_cerco(Partida *partida)
+{
+    int inicio_brecha = GetRandomValue(0, ORBES_CERCO - 1);
+    int indice;
+
+    for (indice = 0; indice < ORBES_CERCO; indice++) {
+        if ((indice - inicio_brecha + ORBES_CERCO) % ORBES_CERCO < BRECHA_CERCO) {
+            continue;
+        }
+        criar_orbe(partida, partida->jogador.posicao,
+                   360.0f * (float)indice / (float)ORBES_CERCO, DISTANCIA_CERCO,
+                   -VELOCIDADE_ORBE_CERCO);
+    }
+}
+
+/* Comportamento do chefe a cada quadro: fase 2, reforços, intangibilidade e ataques. */
 static void atualizar_chefe(Partida *partida, float dt)
 {
     NoInimigo *chefe;
@@ -165,6 +229,17 @@ static void atualizar_chefe(Partida *partida, float dt)
     if (partida->tempo_ate_intangivel <= 0.0f) {
         partida->tempo_ate_intangivel = INTERVALO_INTANGIVEL;
         chefe->dados.tempo_intangivel = DURACAO_INTANGIVEL;
+    }
+    partida->tempo_ate_ataque -= dt;
+    if (partida->tempo_ate_ataque <= 0.0f) {
+        partida->tempo_ate_ataque = partida->chefe_fase2 ? INTERVALO_ATAQUE_FASE2
+                                                         : INTERVALO_ATAQUE_CHEFE;
+        if (partida->ataques_chefe % 2 == 0) {          /* alterna: pulso, cerco, pulso... */
+            atacar_com_pulso(partida, chefe->dados.posicao);
+        } else {
+            atacar_com_cerco(partida);
+        }
+        partida->ataques_chefe++;
     }
 }
 

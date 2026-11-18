@@ -43,6 +43,7 @@ make test
 | Ação | Tecla |
 |---|---|
 | Mover | W A S D ou setas |
+| Dash (impulso curto, sem levar dano, espera 3 s) | ESPAÇO |
 | Pausar | ESC ou P |
 | Menus | setas ou W S, ENTER (ou mouse) |
 | Escolher melhoria ao subir de nível | 1, 2, 3 ou setas + ENTER |
@@ -71,9 +72,14 @@ Depois de **Jogar** você escolhe o herói e o modo.
   item.
 - Os tiros têm **alcance**: o herói só ataca quem está dentro do anel claro ao redor dele. A
   melhoria "Mais alcance" aumenta o anel e o tamanho da onda de impacto.
+- A cada 3 hordas vem um **cerco**: o dobro de inimigos, formando um círculo ao redor do herói.
+- Além de dano, cadência e alcance, há melhorias de personagem: **Armadura** (menos dano
+  recebido), **Regeneração** (cura aos poucos) e **Crítico** (chance de dano em dobro).
 - A partir do nível 3 aparece a carta **Nova arma**, com a segunda arma do herói.
 - No último mundo está o **Doutor Destino**. Ele invoca reforços, fica intangível de vez em
-  quando e fica mais rápido quando a vida dele passa da metade.
+  quando e fica mais rápido quando a vida dele passa da metade. Também ataca com orbes, alternando
+  entre dois golpes: um **pulso** (anel de orbes que sai dele) e um **cerco** (anel que fecha em
+  volta de você, com um vão por onde dá para escapar).
 
 ## Pontuação e ranking
 Antes de cada partida o jogo pede o seu nome. A pontuação soma:
@@ -81,10 +87,11 @@ Antes de cada partida o jogo pede o seu nome. A pontuação soma:
 - **tempo:** 10 pontos por segundo sobrevivido (o modo rápido conta o tempo como se fosse o normal);
 - **bônus:** 1000 por mundo concluído e 5000 por derrotar o Doutor Destino.
 
-Quando a partida termina (derrota ou vitória) a pontuação vai para o **ranking top 10**, que
-fica no arquivo `ranking.txt` (criado ao lado do jogo). Se o nome já está no ranking, só vale se
+Quando a partida termina (derrota ou vitória no **modo normal**) a pontuação vai para o
+**ranking top 10**, que fica no arquivo `ranking.txt` (criado ao lado do jogo). Se o nome já está no ranking, só vale se
 a nova pontuação for maior que a anterior, e aí o jogador sobe de posição. O ranking pode ser
-visto a qualquer momento pela opção **Ranking** do menu.
+visto a qualquer momento pela opção **Ranking** do menu. O modo rápido é só demonstração e não
+entra no ranking.
 
 ## Estrutura de dados e algoritmo
 Os inimigos ficam numa **lista duplamente encadeada** (`src/lista_inimigos.c`). Ela é usada o

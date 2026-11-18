@@ -45,7 +45,8 @@ void interface_desenhar_selecao_heroi(const Imagens *imagens, int selecionada);
 void interface_desenhar_selecao_modo(const Imagens *imagens, int selecionada);
 void interface_desenhar_pausa(int selecionada);
 
-/* Telas de fim de partida. Mostram a pontuação e a posição no ranking (0 = não entrou). */
+/* Telas de fim de partida. Mostram a pontuação e a posição no ranking
+ * (0 = não entrou, -1 = modo rápido, que não conta). */
 void interface_desenhar_derrota(int selecionada, int pontos, int posicao);
 void interface_desenhar_vitoria(int selecionada, int pontos, int posicao);
 

@@ -57,8 +57,8 @@ static const Personagem personagens[] = {
     {
         .nome = "Homem de Ferro", .arma = "Repulsor",
         .descricao = "Tiros rápidos, 1 alvo.",
-        .vida = 100.0f, .velocidade = 180.0f, .dano = 14.0f, .cadencia = 0.38f, .qtd_alvos = 1,
-        .alcance = 380.0f,
+        .vida = 100.0f, .velocidade = 180.0f, .dano = 14.0f, .cadencia = 0.55f, .qtd_alvos = 1,
+        .alcance = 285.0f,
         .cor = { 220, 70, 60, 255 }, .cor_projetil = { 120, 200, 255, 255 },
         .arquivo_imagem = "assets/sprites/heroi_a.png",
         .arquivo_caminhada = "assets/sprites/heroi_a_walk.png", .quadros_caminhada = 4,
@@ -70,7 +70,7 @@ static const Personagem personagens[] = {
         .nome = "Capitão América", .arma = "Escudo",
         .descricao = "Escudo nos 2 mais próximos.",
         .vida = 120.0f, .velocidade = 170.0f, .dano = 14.0f, .cadencia = 1.1f, .qtd_alvos = 2,
-        .alcance = 330.0f,
+        .alcance = 248.0f,
         .cor = { 70, 110, 220, 255 }, .cor_projetil = { 230, 230, 255, 255 },
         .arquivo_imagem = "assets/sprites/heroi_b.png",
         .arquivo_caminhada = "assets/sprites/heroi_b_walk.png", .quadros_caminhada = 4,
@@ -82,8 +82,8 @@ static const Personagem personagens[] = {
         .nome = "Hulk", .arma = "Onda de impacto",
         .descricao = "Onda em área, muita vida.",
         .vida = 180.0f, .velocidade = 140.0f, .dano = 12.0f, .cadencia = 1.2f, .qtd_alvos = 0,
-        .alcance = 320.0f,
-        .raio_pulso = 110.0f, .dano_pulso = 16.0f, .intervalo_pulso = 1.1f,
+        .alcance = 240.0f,
+        .raio_pulso = 82.0f, .dano_pulso = 16.0f, .intervalo_pulso = 1.1f,
         .cor = { 90, 180, 80, 255 }, .cor_projetil = { 150, 130, 90, 255 },
         .arquivo_imagem = "assets/sprites/heroi_c.png",
         .arquivo_caminhada = "assets/sprites/heroi_c_walk.png", .quadros_caminhada = 4,
@@ -103,13 +103,16 @@ static const DadosUpgrade upgrades[TOTAL_UPGRADES] = {
     { "Mais velocidade", "Você anda mais rápido." },
     { "Mais vida", "+20 de vida máxima e cura." },
     { "Ímã de XP", "Atrai o XP de mais longe." },
+    { "Armadura", "Leva menos dano." },
+    { "Regeneração", "Cura vida aos poucos." },
+    { "Crítico", "Chance de dano em dobro." },
     { "Nova arma", "Ganha uma segunda arma." },
 };
 
 static const Mundo mundos[] = {
     {
         .nome = "Latveria", .duracao = 90.0f,
-        .intervalo_inicial = 1.0f, .intervalo_final = 0.45f,
+        .intervalo_inicial = 0.85f, .intervalo_final = 0.38f,
         /* O Doombot aparece duas vezes na lista para ser mais comum que os outros. */
         .tipos = { TIPO_DOOMBOT, TIPO_DOOMBOT, TIPO_DOOMBOT_VELOZ, TIPO_MAGO },
         .qtd_tipos = 4,
@@ -126,7 +129,7 @@ static const Mundo mundos[] = {
     },
     {
         .nome = "Terra dos Sentinelas", .duracao = 90.0f,
-        .intervalo_inicial = 0.9f, .intervalo_final = 0.40f,
+        .intervalo_inicial = 0.77f, .intervalo_final = 0.34f,
         .tipos = { TIPO_DOOMBOT, TIPO_DOOMBOT, TIPO_DOOMBOT_ELITE, TIPO_SENTINELA },
         .qtd_tipos = 4,
         .cor_linhas_chao = { 110, 70, 40, 255 },
@@ -142,7 +145,7 @@ static const Mundo mundos[] = {
     },
     {
         .nome = "Dimensão Sombria", .duracao = 90.0f,
-        .intervalo_inicial = 0.8f, .intervalo_final = 0.35f,
+        .intervalo_inicial = 0.68f, .intervalo_final = 0.30f,
         .tipos = { TIPO_ESPECTRO, TIPO_ESPECTRO, TIPO_MAGO, TIPO_SENTINELA,
                    TIPO_DOOMBOT_ELITE },
         .qtd_tipos = 5,

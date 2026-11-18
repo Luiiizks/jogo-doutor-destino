@@ -27,11 +27,14 @@ static int preparar_mundo(Partida *partida, int indice_mundo)
     partida->tempo_ate_horda = INTERVALO_HORDA * partida->escala_tempo;
     partida->hordas_ocorridas = 0;
     partida->aviso_horda = 0.0f;
+    partida->aviso_cerco = 0;
     partida->portal_aberto = 0;
     partida->chefe_criado = 0;
     partida->chefe_fase2 = 0;
     partida->tempo_ate_reforcos = INTERVALO_REFORCOS;
     partida->tempo_ate_intangivel = INTERVALO_INTANGIVEL;
+    partida->tempo_ate_ataque = INTERVALO_ATAQUE_CHEFE;
+    partida->ataques_chefe = 0;
     return partida->inimigos != NULL;
 }
 

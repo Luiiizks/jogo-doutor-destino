@@ -37,12 +37,15 @@ typedef struct {
     float tempo_ate_horda;
     int hordas_ocorridas;
     float aviso_horda;         /* segundos restantes do aviso "HORDA!" na tela */
+    int aviso_cerco;           /* 1 se a horda do aviso é um cerco */
     int portal_aberto;         /* 1 depois que o tempo do mundo acaba */
     Vetor2 posicao_portal;
     int chefe_criado;          /* mundo do chefe: 1 depois que ele nasceu */
     int chefe_fase2;
     float tempo_ate_reforcos;
     float tempo_ate_intangivel;
+    float tempo_ate_ataque;    /* chefe: segundos até o próximo ataque de orbes */
+    int ataques_chefe;         /* quantos ataques ele já fez (alterna entre os dois) */
 } Partida;
 
 typedef enum {

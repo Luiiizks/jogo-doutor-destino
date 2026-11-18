@@ -61,6 +61,7 @@ typedef struct {
     float dano;
     float raio;
     float tempo_restante;      /* segundos até sumir sozinho */
+    int critico;               /* 1 = esse tiro já saiu como crítico */
     int personagem;            /* de qual herói saiu (escolhe a imagem do tiro) */
 } Projetil;
 
@@ -69,6 +70,7 @@ typedef struct {
     Vetor2 posicao;
     int valor;
     float tempo_restante;
+    int critico;               /* 1 = acerto crítico (desenhado maior e laranja) */
 } NumeroDano;
 
 /* Melhorias que o jogador escolhe ao subir de nível. */
@@ -80,6 +82,9 @@ typedef enum {
     UPGRADE_VELOCIDADE,
     UPGRADE_VIDA,
     UPGRADE_IMA,               /* aumenta de onde as gemas de XP são atraídas */
+    UPGRADE_ARMADURA,          /* reduz o dano recebido */
+    UPGRADE_REGENERACAO,       /* cura vida aos poucos */
+    UPGRADE_CRITICO,           /* chance de dar o dobro de dano */
     UPGRADE_NOVA_ARMA,         /* segunda arma: a que o herói ainda não tem */
     TOTAL_UPGRADES
 } TipoUpgrade;
@@ -95,6 +100,11 @@ typedef struct {
     int olhando_esquerda;      /* 1 se a última direção horizontal foi para a esquerda */
     int andando;               /* 1 se alguma tecla de movimento está apertada */
     float tempo_invulneravel;  /* segundos restantes sem levar dano */
+    float tempo_dash;          /* segundos restantes do impulso do dash */
+    float espera_dash;         /* segundos até poder usar o dash de novo */
+    float reducao_dano;        /* fração do dano recebido que a armadura tira (0 a 1) */
+    float regeneracao;         /* vida recuperada por segundo */
+    int chance_critico;        /* % de chance de o ataque causar dano em dobro */
 
     /* disparo arcano */
     float dano;

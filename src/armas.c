@@ -5,9 +5,17 @@
 #include <math.h>
 #include <stddef.h>
 
+#include "raylib.h"
+
 #include "armas.h"
 #include "dados.h"
 #include "jogador.h"
+
+/* Sorteia se este ataque é crítico (chance_critico é em %). */
+static int sortear_critico(const Jogador *jogador)
+{
+    return GetRandomValue(1, 100) <= jogador->chance_critico;
+}
 
 /* Cria um projétil saindo do herói em direção a um alvo. Ignora se o vetor de projéteis
  * estiver cheio ou se o alvo estiver exatamente em cima do herói. */
@@ -26,7 +34,8 @@ static void criar_projetil(Partida *partida, Vetor2 alvo)
     novo->posicao = jogador->posicao;
     novo->velocidade.x = diferenca_x / distancia * VELOCIDADE_PROJETIL;
     novo->velocidade.y = diferenca_y / distancia * VELOCIDADE_PROJETIL;
-    novo->dano = jogador->dano;
+    novo->critico = sortear_critico(jogador);
+    novo->dano = novo->critico ? jogador->dano * FATOR_CRITICO : jogador->dano;
     novo->raio = RAIO_PROJETIL;
     novo->personagem = jogador->personagem;
     novo->tempo_restante = jogador->alcance / VELOCIDADE_PROJETIL + 0.05f;   /* some no alcance */
@@ -61,7 +70,7 @@ static int disparar_arcano(Partida *partida)
 }
 
 /* Cria um número de dano na posição do acerto (ignora se o vetor estiver cheio). */
-static void criar_numero_dano(Partida *partida, Vetor2 posicao, float dano)
+static void criar_numero_dano(Partida *partida, Vetor2 posicao, float dano, int critico)
 {
     NumeroDano *numero;
 
@@ -71,6 +80,7 @@ static void criar_numero_dano(Partida *partida, Vetor2 posicao, float dano)
     numero = &partida->numeros_dano[partida->qtd_numeros_dano];
     numero->posicao = posicao;
     numero->valor = (int)dano;
+    numero->critico = critico;
     numero->tempo_restante = DURACAO_NUMERO_DANO;
     partida->qtd_numeros_dano++;
 }
@@ -109,7 +119,7 @@ static void atualizar_projeteis(Partida *partida, float dt)
         acertou = lista_colidir_com_projetil(partida->inimigos, projetil);
 
         if (acertou) {
-            criar_numero_dano(partida, projetil->posicao, projetil->dano);
+            criar_numero_dano(partida, projetil->posicao, projetil->dano, projetil->critico);
         }
         if (acertou || projetil->tempo_restante <= 0.0f) {
             /* Troca pelo último do vetor (a ordem dos projéteis não importa). */
@@ -128,7 +138,8 @@ static void dar_golpe(Partida *partida)
 
     jogador->efeito_pulso = DURACAO_EFEITO_PULSO;
     lista_dano_em_area(partida->inimigos, jogador->posicao, jogador->raio_pulso,
-                       jogador->dano_pulso);
+                       sortear_critico(jogador) ? jogador->dano_pulso * FATOR_CRITICO
+                                                : jogador->dano_pulso);
 }
 
 /* Onda de impacto (soco do Hulk / pulso): a cada "intervalo_pulso" segundos o herói bate

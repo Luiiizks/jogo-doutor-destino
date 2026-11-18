@@ -24,7 +24,9 @@ static const Color COR_FUNDO = { 20, 16, 28, 255 };
 static const Color COR_BOTAO = { 45, 38, 64, 255 };
 static const Color COR_BOTAO_SELECIONADO = { 90, 60, 160, 255 };
 
-static const char *const rotulos_menu[TOTAL_OPCOES_MENU] = { "Jogar", "Ranking", "Como jogar", "Sair" };
+static const char *const rotulos_menu[TOTAL_OPCOES_MENU] = {
+    "Jogar", "Ranking", "Como jogar", "Sair"
+};
 static const char *const rotulos_pausa[TOTAL_OPCOES_PAUSA] = { "Continuar", "Voltar ao menu" };
 static const char *const rotulos_modo[TOTAL_OPCOES_MODO] = { "Normal", "Modo rápido" };
 static const char *const rotulos_fim[TOTAL_OPCOES_FIM] = { "Jogar de novo", "Voltar ao menu" };
@@ -134,7 +136,8 @@ void interface_desenhar_como_jogar(const Imagens *imagens)
     desenhar_fundo(imagens);
     DrawText("Como jogar", 80, 60, 48, RAYWHITE);
     DrawText("O herói ataca sozinho os inimigos mais próximos.", 80, 160, 26, LIGHTGRAY);
-    DrawText("Mover: WASD ou setas   |   Pausar: ESC ou P", 80, 220, 26, LIGHTGRAY);
+    DrawText("Mover: WASD ou setas   |   Dash: ESPAÇO   |   Pausar: ESC ou P", 80, 220, 26,
+             LIGHTGRAY);
     DrawText("A cada nível, escolha uma melhoria (teclas 1, 2 e 3).", 80, 270, 26, LIGHTGRAY);
     DrawText("Sobreviva até o fim do tempo de cada mundo e entre no portal.", 80, 320, 26,
              LIGHTGRAY);
@@ -153,7 +156,9 @@ void interface_desenhar_pausa(int selecionada)
 static void desenhar_pontuacao(int pontos, int posicao, int y)
 {
     desenhar_texto_centralizado(TextFormat("Pontuação: %d", pontos), y, 34, GOLD);
-    if (posicao > 0) {
+    if (posicao < 0) {
+        desenhar_texto_centralizado("O modo rápido não entra no ranking.", y + 46, 22, LIGHTGRAY);
+    } else if (posicao > 0) {
         desenhar_texto_centralizado(TextFormat("Você ficou em %dº lugar no ranking!", posicao),
                                     y + 46, 24, (Color){ 120, 220, 140, 255 });
     } else {

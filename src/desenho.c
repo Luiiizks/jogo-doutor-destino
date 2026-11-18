@@ -115,10 +115,13 @@ static void desenhar_numeros_dano(const Partida *partida)
         const NumeroDano *numero = &partida->numeros_dano[indice];
         float transparencia = numero->tempo_restante / DURACAO_NUMERO_DANO;
 
+        int tamanho = numero->critico ? 28 : 20;       /* crítico: maior e laranja */
+
         DrawText(TextFormat("%d", numero->valor), (int)numero->posicao.x + 1,
-                 (int)numero->posicao.y + 1, 20, Fade(BLACK, transparencia));
+                 (int)numero->posicao.y + 1, tamanho, Fade(BLACK, transparencia));
         DrawText(TextFormat("%d", numero->valor), (int)numero->posicao.x,
-                 (int)numero->posicao.y, 20, Fade(YELLOW, transparencia));
+                 (int)numero->posicao.y, tamanho,
+                 Fade(numero->critico ? ORANGE : YELLOW, transparencia));
     }
 }
 
@@ -446,10 +449,18 @@ static void desenhar_hud(const Partida *partida)
     DrawText(TextFormat("%d / %d", (int)jogador->vida, (int)jogador->vida_maxima), 28, 21, 16,
              RAYWHITE);
     DrawText(TextFormat("Nível %d", jogador->nivel), 20, 46, 22, RAYWHITE);
+    if (jogador->espera_dash > 0.0f) {
+        DrawText(TextFormat("Dash: %ds", (int)ceilf(jogador->espera_dash)), 20, 74, 18, GRAY);
+    } else {
+        DrawText("Dash: ESPAÇO", 20, 74, 18, GOLD);
+    }
     desenhar_info_do_mundo(partida);
     if (partida->aviso_horda > 0.0f) {
-        const char *aviso = partida_eh_arena(partida) ? "REFORÇOS!" : "HORDA!";
+        const char *aviso = partida->aviso_cerco ? "CERCO!" : "HORDA!";
 
+        if (partida_eh_arena(partida)) {
+            aviso = "REFORÇOS!";
+        }
         DrawText(aviso, (LARGURA_JANELA - MeasureText(aviso, 48)) / 2, 90, 48,
                  (Color){ 255, 90, 90, 255 });
     }
