@@ -28,6 +28,9 @@ typedef struct {
     ModoJogo modo;
     float escala_tempo;        /* 1 no modo normal; menor que 1 no modo rápido */
     float vida_chefe_maxima;
+    int pontos_abates;         /* pontos ganhos matando inimigos */
+    float tempo_total;         /* segundos sobrevividos na partida toda (tempo "normal") */
+    int pontos_bonus;          /* bônus por mundo concluído e por derrotar o chefe */
     int mundo;                 /* índice na tabela de mundos */
     float tempo_mundo;         /* segundos desde que o mundo começou */
     float tempo_ate_spawn;
@@ -57,6 +60,9 @@ int partida_tem_proximo_mundo(const Partida *partida);
 /* Passa para o próximo mundo mantendo o herói (nível, melhorias) e curando parte da vida.
  * Devolve 0 se faltar memória. Chame só se partida_tem_proximo_mundo for 1. */
 int partida_proximo_mundo(Partida *partida);
+
+/* Pontuação da partida: abates + tempo sobrevivido + bônus de mundo e de chefe. */
+int partida_pontuacao(const Partida *partida);
 
 /* Devolve 1 se o mundo atual é a arena do chefe. */
 int partida_eh_arena(const Partida *partida);

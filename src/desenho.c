@@ -455,6 +455,7 @@ static void desenhar_hud(const Partida *partida)
     }
     desenhar_texto_direita(TextFormat("Inimigos: %d", lista_contar(partida->inimigos)), 52, 20,
                            LIGHTGRAY);
+    desenhar_texto_direita(TextFormat("Pontos: %d", partida_pontuacao(partida)), 78, 22, GOLD);
 
     desenhar_barra(0, ALTURA_JANELA - ALTURA_BARRA_XP, LARGURA_JANELA, ALTURA_BARRA_XP,
                    (float)jogador->xp, (float)jogador_xp_para_proximo_nivel(jogador),

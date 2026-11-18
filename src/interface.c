@@ -1,6 +1,8 @@
 /* interface.c - menus e telas de texto.
  * Só desenha e lê entrada de menu; não conhece as regras do jogo. */
 
+#include <string.h>
+
 #include "raylib.h"
 #include "config.h"
 #include "dados.h"
@@ -22,7 +24,7 @@ static const Color COR_FUNDO = { 20, 16, 28, 255 };
 static const Color COR_BOTAO = { 45, 38, 64, 255 };
 static const Color COR_BOTAO_SELECIONADO = { 90, 60, 160, 255 };
 
-static const char *const rotulos_menu[TOTAL_OPCOES_MENU] = { "Jogar", "Como jogar", "Sair" };
+static const char *const rotulos_menu[TOTAL_OPCOES_MENU] = { "Jogar", "Ranking", "Como jogar", "Sair" };
 static const char *const rotulos_pausa[TOTAL_OPCOES_PAUSA] = { "Continuar", "Voltar ao menu" };
 static const char *const rotulos_modo[TOTAL_OPCOES_MODO] = { "Normal", "Modo rápido" };
 static const char *const rotulos_fim[TOTAL_OPCOES_FIM] = { "Jogar de novo", "Voltar ao menu" };
@@ -147,20 +149,111 @@ void interface_desenhar_pausa(int selecionada)
     desenhar_opcoes(rotulos_pausa, TOTAL_OPCOES_PAUSA, selecionada);
 }
 
-void interface_desenhar_derrota(int selecionada)
+/* Pontuação da partida e o resultado no ranking, logo abaixo do título. */
+static void desenhar_pontuacao(int pontos, int posicao, int y)
+{
+    desenhar_texto_centralizado(TextFormat("Pontuação: %d", pontos), y, 34, GOLD);
+    if (posicao > 0) {
+        desenhar_texto_centralizado(TextFormat("Você ficou em %dº lugar no ranking!", posicao),
+                                    y + 46, 24, (Color){ 120, 220, 140, 255 });
+    } else {
+        desenhar_texto_centralizado("Não superou seu recorde nem entrou no top 10.", y + 46, 22,
+                                    LIGHTGRAY);
+    }
+}
+
+void interface_desenhar_derrota(int selecionada, int pontos, int posicao)
 {
     escurecer_tela();
-    desenhar_texto_centralizado("Você caiu...", 200, 56, (Color){ 230, 90, 90, 255 });
+    desenhar_texto_centralizado("Você caiu...", 140, 56, (Color){ 230, 90, 90, 255 });
+    desenhar_pontuacao(pontos, posicao, 225);
     desenhar_opcoes(rotulos_fim, TOTAL_OPCOES_FIM, selecionada);
 }
 
-void interface_desenhar_vitoria(int selecionada)
+void interface_desenhar_vitoria(int selecionada, int pontos, int posicao)
 {
     escurecer_tela();
-    desenhar_texto_centralizado("VITÓRIA!", 150, 72, GOLD);
-    desenhar_texto_centralizado("Doutor Destino foi derrotado e o multiverso está salvo.", 250,
+    desenhar_texto_centralizado("VITÓRIA!", 70, 72, GOLD);
+    desenhar_texto_centralizado("Doutor Destino foi derrotado e o multiverso está salvo.", 160,
                                 26, RAYWHITE);
+    desenhar_pontuacao(pontos, posicao, 225);
     desenhar_opcoes(rotulos_fim, TOTAL_OPCOES_FIM, selecionada);
+}
+
+int interface_atualizar_nome(char *nome)
+{
+    int tamanho = (int)strlen(nome);
+    int tecla = GetCharPressed();
+
+    /* GetCharPressed devolve uma tecla por vez até esvaziar a fila. Aceita só caracteres
+     * simples (ASCII visível) e não deixa o nome começar com espaço. */
+    while (tecla > 0) {
+        if (tecla >= 32 && tecla <= 126 && tamanho < TAMANHO_NOME - 1
+            && !(tecla == ' ' && tamanho == 0)) {
+            nome[tamanho] = (char)tecla;
+            tamanho++;
+            nome[tamanho] = '\0';
+        }
+        tecla = GetCharPressed();
+    }
+    if ((IsKeyPressed(KEY_BACKSPACE) || IsKeyPressedRepeat(KEY_BACKSPACE)) && tamanho > 0) {
+        tamanho--;
+        nome[tamanho] = '\0';
+    }
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        return -1;
+    }
+    if (IsKeyPressed(KEY_ENTER) && tamanho > 0) {
+        while (tamanho > 0 && nome[tamanho - 1] == ' ') {     /* tira espaços do final */
+            tamanho--;
+            nome[tamanho] = '\0';
+        }
+        return 1;
+    }
+    return 0;
+}
+
+void interface_desenhar_nome(const Imagens *imagens, const char *nome)
+{
+    Rectangle caixa = { (LARGURA_JANELA - 520) / 2.0f, 300.0f, 520.0f, 70.0f };
+    int cursor_visivel = ((int)(GetTime() * 2.0)) % 2 == 0;     /* pisca duas vezes por segundo */
+    int largura_texto = MeasureText(nome, 36);
+
+    desenhar_fundo(imagens);
+    desenhar_texto_centralizado("Qual é o seu nome?", 180, 52, RAYWHITE);
+    desenhar_texto_centralizado("Ele aparece no ranking com a sua pontuação.", 245, 22, LIGHTGRAY);
+    DrawRectangleRec(caixa, COR_BOTAO);
+    DrawRectangleLinesEx(caixa, 3.0f, COR_BOTAO_SELECIONADO);
+    DrawText(nome, (int)caixa.x + 20, (int)caixa.y + 17, 36, RAYWHITE);
+    if (cursor_visivel) {
+        DrawRectangle((int)caixa.x + 24 + largura_texto, (int)caixa.y + 15, 3, 40, GOLD);
+    }
+    desenhar_texto_centralizado("ENTER confirma  |  ESC volta  |  até 12 caracteres", 650, 20,
+                                LIGHTGRAY);
+}
+
+void interface_desenhar_ranking(const Imagens *imagens, const Ranking *ranking, int destaque)
+{
+    const int esquerda = (LARGURA_JANELA - 560) / 2;
+    int indice;
+
+    desenhar_fundo(imagens);
+    desenhar_texto_centralizado("Ranking", 40, 52, GOLD);
+    if (ranking->quantidade == 0) {
+        desenhar_texto_centralizado("Ninguém jogou ainda. Seja o primeiro!", 300, 28, RAYWHITE);
+    }
+    for (indice = 0; indice < ranking->quantidade; indice++) {
+        int topo = 120 + indice * 50;
+        Color cor = (indice + 1 == destaque) ? GOLD : RAYWHITE;
+        const char *pontos = TextFormat("%d", ranking->entradas[indice].pontos);
+
+        DrawRectangle(esquerda, topo, 560, 44, (indice % 2 == 0) ? COR_BOTAO
+                                                                 : (Color){ 36, 30, 52, 255 });
+        DrawText(TextFormat("%d", indice + 1), esquerda + 16, topo + 8, 28, cor);
+        DrawText(ranking->entradas[indice].nome, esquerda + 80, topo + 8, 28, cor);
+        DrawText(pontos, esquerda + 540 - MeasureText(pontos, 28), topo + 8, 28, cor);
+    }
+    desenhar_texto_centralizado("ESC ou ENTER para voltar", 660, 20, LIGHTGRAY);
 }
 
 int interface_atualizar_transicao(void)

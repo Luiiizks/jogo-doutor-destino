@@ -39,6 +39,9 @@ int partida_iniciar(Partida *partida, int indice_personagem, int indice_mundo, M
 {
     partida_encerrar(partida);
     partida->modo = modo;
+    partida->pontos_abates = 0;
+    partida->tempo_total = 0.0f;
+    partida->pontos_bonus = 0;
     partida->jogador = jogador_criar(indice_personagem);
     if (modo == MODO_RAPIDO) {
         partida->jogador.fator_xp = FATOR_XP_RAPIDO;
@@ -64,6 +67,12 @@ int partida_proximo_mundo(Partida *partida)
                                                              : vida_recuperada;
     jogador->efeito_pulso = 0.0f;
     return preparar_mundo(partida, partida->mundo + 1);
+}
+
+int partida_pontuacao(const Partida *partida)
+{
+    return partida->pontos_abates + (int)(partida->tempo_total * PONTOS_POR_SEGUNDO)
+           + partida->pontos_bonus;
 }
 
 int partida_eh_arena(const Partida *partida)
@@ -102,6 +111,7 @@ ResultadoPartida partida_atualizar(Partida *partida, float dt)
     float vida_antes = jogador->vida;
 
     jogador_atualizar(jogador, dt);
+    partida->tempo_total += dt / partida->escala_tempo;   /* modo rápido conta o tempo "normal" */
     if (partida_eh_arena(partida)) {
         limitar_jogador_na_arena(jogador);
     }
@@ -123,6 +133,7 @@ ResultadoPartida partida_atualizar(Partida *partida, float dt)
         return PARTIDA_DERROTA;
     }
     if (mundos_concluido(partida)) {
+        partida->pontos_bonus += partida_eh_arena(partida) ? BONUS_CHEFE : BONUS_MUNDO;
         lista_limpar(partida->inimigos);             /* chefe caiu: os reforços somem */
         partida->qtd_tiros_inimigos = 0;
         return PARTIDA_MUNDO_CONCLUIDO;

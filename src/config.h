@@ -129,4 +129,13 @@
 #define DANO_PULSO_POR_NIVEL 8.0f
 #define DURACAO_EFEITO_PULSO 0.25f
 
+/* Pontuação e ranking */
+#define PONTOS_POR_XP        10     /* cada abate vale o XP do inimigo x 10 */
+#define PONTOS_POR_SEGUNDO   10     /* tempo sobrevivido (o modo rápido conta o tempo "normal") */
+#define BONUS_MUNDO          1000   /* por mundo concluído */
+#define BONUS_CHEFE          5000   /* por derrotar o Doutor Destino */
+#define RANKING_TAMANHO      10     /* quantas posições o ranking guarda */
+#define TAMANHO_NOME         13     /* 12 letras + o '\0' */
+#define ARQUIVO_RANKING      "ranking.txt"
+
 #endif

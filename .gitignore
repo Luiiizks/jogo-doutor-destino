@@ -2,6 +2,8 @@ doomsday
 doomsday_debug
 teste_lista
 teste_cenario
+teste_ranking
+ranking.txt
 entrega.zip
 *.dSYM/
 .DS_Store

@@ -34,7 +34,7 @@ make run
 É importante rodar de dentro da pasta, porque as imagens são lidas de `assets/`.
 Para só compilar, use `make` e abra com `./doomsday`.
 
-Os testes da lista de inimigos rodam no terminal, sem abrir janela:
+Os testes da lista de inimigos, do cenário e do ranking rodam no terminal, sem abrir janela:
 ```
 make test
 ```
@@ -75,6 +75,17 @@ Depois de **Jogar** você escolhe o herói e o modo.
 - No último mundo está o **Doutor Destino**. Ele invoca reforços, fica intangível de vez em
   quando e fica mais rápido quando a vida dele passa da metade.
 
+## Pontuação e ranking
+Antes de cada partida o jogo pede o seu nome. A pontuação soma:
+- **abates:** cada inimigo vale o XP dele x 10 (elites valem mais);
+- **tempo:** 10 pontos por segundo sobrevivido (o modo rápido conta o tempo como se fosse o normal);
+- **bônus:** 1000 por mundo concluído e 5000 por derrotar o Doutor Destino.
+
+Quando a partida termina (derrota ou vitória) a pontuação vai para o **ranking top 10**, que
+fica no arquivo `ranking.txt` (criado ao lado do jogo). Se o nome já está no ranking, só vale se
+a nova pontuação for maior que a anterior, e aí o jogador sobe de posição. O ranking pode ser
+visto a qualquer momento pela opção **Ranking** do menu.
+
 ## Estrutura de dados e algoritmo
 Os inimigos ficam numa **lista duplamente encadeada** (`src/lista_inimigos.c`). Ela é usada o
 tempo todo:
@@ -102,14 +113,15 @@ src/
   mundos.c/h           tempo do mundo, hordas, elites, portal e chefe
   gemas.c/h            XP e itens que caem no chão
   jogador.c/h          movimento, nível e melhorias
-  partida.c/h          junta tudo e avança um quadro do jogo
+  partida.c/h          junta tudo, avança um quadro do jogo e calcula a pontuação
+  ranking.c/h          top 10 de pontuações, salvo em arquivo (sem raylib)
   cenario.c/h          sorteio dos objetos espalhados pelo mapa (sem raylib)
   dados.c/h            tabelas de heróis, inimigos e mundos
   desenho.c/h          desenho da partida
   interface.c/h        menus e telas
   imagens.c/h          carrega as imagens
   main.c               janela e controle das telas
-tests/                 testes da lista e do cenário (make test)
+tests/                 testes da lista, do cenário e do ranking (make test)
 assets/                imagens do jogo
 Makefile
 ```

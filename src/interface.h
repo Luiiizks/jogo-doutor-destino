@@ -4,10 +4,12 @@
 #define INTERFACE_H
 
 #include "imagens.h"
+#include "ranking.h"
 #include "tipos.h"
 
 typedef enum {
     OPCAO_JOGAR,
+    OPCAO_RANKING,
     OPCAO_COMO_JOGAR,
     OPCAO_SAIR,
     TOTAL_OPCOES_MENU
@@ -42,8 +44,18 @@ void interface_desenhar_como_jogar(const Imagens *imagens);
 void interface_desenhar_selecao_heroi(const Imagens *imagens, int selecionada);
 void interface_desenhar_selecao_modo(const Imagens *imagens, int selecionada);
 void interface_desenhar_pausa(int selecionada);
-void interface_desenhar_derrota(int selecionada);
-void interface_desenhar_vitoria(int selecionada);
+
+/* Telas de fim de partida. Mostram a pontuação e a posição no ranking (0 = não entrou). */
+void interface_desenhar_derrota(int selecionada, int pontos, int posicao);
+void interface_desenhar_vitoria(int selecionada, int pontos, int posicao);
+
+/* Tela onde o jogador digita o nome. Escreve em "nome" (tamanho TAMANHO_NOME). Devolve 1 quando
+ * confirma com ENTER (nome não vazio), -1 se apertar ESC e 0 se ainda está digitando. */
+int interface_atualizar_nome(char *nome);
+void interface_desenhar_nome(const Imagens *imagens, const char *nome);
+
+/* Tela do ranking. "destaque" é a posição (1 a 10) a realçar, ou 0 para nenhuma. */
+void interface_desenhar_ranking(const Imagens *imagens, const Ranking *ranking, int destaque);
 
 /* Tela entre um mundo e outro. Devolve 1 quando o jogador confirma (ENTER, ESPAÇO ou clique). */
 int interface_atualizar_transicao(void);

@@ -10,10 +10,13 @@
 #include "interface.h"
 #include "jogador.h"
 #include "partida.h"
+#include "ranking.h"
 
 typedef enum {
     TELA_MENU,
     TELA_COMO_JOGAR,
+    TELA_RANKING,
+    TELA_NOME,
     TELA_SELECAO_HEROI,
     TELA_SELECAO_MODO,
     TELA_JOGANDO,
@@ -36,6 +39,10 @@ typedef struct {
     Imagens imagens;
     int escolhas[OPCOES_LEVEL_UP];      /* melhorias sorteadas no level-up */
     int qtd_escolhas;
+    char nome[TAMANHO_NOME];            /* nome do jogador (fica lembrado entre as partidas) */
+    Ranking ranking;
+    int pontuacao_final;                /* pontos da partida que acabou de terminar */
+    int posicao_ranking;                /* onde ela ficou no ranking (0 = não entrou) */
 } Jogo;
 
 /* Começa uma partida nova com o herói e o modo escolhidos, no primeiro mundo. */
@@ -47,6 +54,15 @@ static void iniciar_partida(Jogo *jogo)
         jogo->tela = TELA_MENU;     /* faltou memória: volta ao menu em vez de travar */
     }
     jogo->opcao = 0;
+}
+
+/* Fim da partida (derrota ou vitória): coloca a pontuação no ranking e grava o arquivo. */
+static void registrar_pontuacao(Jogo *jogo)
+{
+    jogo->pontuacao_final = partida_pontuacao(&jogo->partida);
+    jogo->posicao_ranking = ranking_registrar(&jogo->ranking, jogo->nome,
+                                              jogo->pontuacao_final);
+    ranking_salvar(&jogo->ranking, ARQUIVO_RANKING);
 }
 
 /* Se o herói juntou XP, sorteia as melhorias e abre a tela de level-up. */
@@ -72,11 +88,28 @@ static void atualizar_menu(Jogo *jogo)
 
     if (escolhida == OPCAO_JOGAR) {
         jogo->opcao = 0;
-        jogo->tela = TELA_SELECAO_HEROI;
+        jogo->tela = TELA_NOME;
+    } else if (escolhida == OPCAO_RANKING) {
+        jogo->posicao_ranking = 0;
+        jogo->tela = TELA_RANKING;
     } else if (escolhida == OPCAO_COMO_JOGAR) {
         jogo->tela = TELA_COMO_JOGAR;
     } else if (escolhida == OPCAO_SAIR) {
         jogo->sair = 1;
+    }
+}
+
+/* Digitação do nome; ENTER segue para a escolha do herói e ESC volta ao menu. */
+static void atualizar_nome(Jogo *jogo)
+{
+    int resultado = interface_atualizar_nome(jogo->nome);
+
+    if (resultado == 1) {
+        jogo->opcao = 0;
+        jogo->tela = TELA_SELECAO_HEROI;
+    } else if (resultado == -1) {
+        jogo->opcao = 0;
+        jogo->tela = TELA_MENU;
     }
 }
 
@@ -127,12 +160,17 @@ static void atualizar_jogando(Jogo *jogo)
                                      jogo->partida.jogador.posicao.y };
 
     if (resultado == PARTIDA_DERROTA) {
+        registrar_pontuacao(jogo);
         jogo->opcao = 0;
         jogo->tela = TELA_DERROTA;
     } else if (resultado == PARTIDA_MUNDO_CONCLUIDO) {
         jogo->opcao = 0;
-        jogo->tela = partida_tem_proximo_mundo(&jogo->partida) ? TELA_TRANSICAO
-                                                               : TELA_VITORIA;
+        if (partida_tem_proximo_mundo(&jogo->partida)) {
+            jogo->tela = TELA_TRANSICAO;
+        } else {
+            registrar_pontuacao(jogo);
+            jogo->tela = TELA_VITORIA;
+        }
     } else {
         verificar_level_up(jogo);
     }
@@ -166,13 +204,15 @@ static void atualizar_level_up(Jogo *jogo)
     }
 }
 
-/* Derrota e mundo concluído têm os mesmos botões: jogar de novo ou voltar ao menu. */
+/* Derrota e vitória têm os mesmos botões: jogar de novo (pede o nome outra vez) ou menu. */
 static void atualizar_fim(Jogo *jogo)
 {
     int escolhida = interface_atualizar_opcoes(&jogo->opcao, TOTAL_OPCOES_FIM);
 
     if (escolhida == OPCAO_FIM_JOGAR_DE_NOVO) {
-        iniciar_partida(jogo);
+        partida_encerrar(&jogo->partida);
+        jogo->opcao = 0;
+        jogo->tela = TELA_NOME;
     } else if (escolhida == OPCAO_FIM_MENU) {
         partida_encerrar(&jogo->partida);
         jogo->opcao = 0;
@@ -201,6 +241,12 @@ static void atualizar(Jogo *jogo)
         if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
             jogo->tela = TELA_MENU;
         }
+    } else if (jogo->tela == TELA_RANKING) {
+        if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER)) {
+            jogo->tela = TELA_MENU;
+        }
+    } else if (jogo->tela == TELA_NOME) {
+        atualizar_nome(jogo);
     } else if (jogo->tela == TELA_SELECAO_HEROI) {
         atualizar_selecao_heroi(jogo);
     } else if (jogo->tela == TELA_SELECAO_MODO) {
@@ -224,6 +270,10 @@ static void desenhar(const Jogo *jogo)
         interface_desenhar_menu_principal(&jogo->imagens, jogo->opcao);
     } else if (jogo->tela == TELA_COMO_JOGAR) {
         interface_desenhar_como_jogar(&jogo->imagens);
+    } else if (jogo->tela == TELA_RANKING) {
+        interface_desenhar_ranking(&jogo->imagens, &jogo->ranking, 0);
+    } else if (jogo->tela == TELA_NOME) {
+        interface_desenhar_nome(&jogo->imagens, jogo->nome);
     } else if (jogo->tela == TELA_SELECAO_HEROI) {
         interface_desenhar_selecao_heroi(&jogo->imagens, jogo->opcao);
     } else if (jogo->tela == TELA_SELECAO_MODO) {
@@ -240,9 +290,11 @@ static void desenhar(const Jogo *jogo)
             interface_desenhar_transicao(dados_mundo(jogo->partida.mundo)->nome,
                                          dados_mundo(jogo->partida.mundo + 1)->nome);
         } else if (jogo->tela == TELA_DERROTA) {
-            interface_desenhar_derrota(jogo->opcao);
+            interface_desenhar_derrota(jogo->opcao, jogo->pontuacao_final,
+                                       jogo->posicao_ranking);
         } else if (jogo->tela == TELA_VITORIA) {
-            interface_desenhar_vitoria(jogo->opcao);
+            interface_desenhar_vitoria(jogo->opcao, jogo->pontuacao_final,
+                                       jogo->posicao_ranking);
         }
     }
 }
@@ -255,6 +307,7 @@ int main(void)
     SetTargetFPS(FPS_ALVO);
     SetExitKey(KEY_NULL);    /* ESC não fecha a janela direto: usamos ele nas telas */
 
+    ranking_carregar(&jogo.ranking, ARQUIVO_RANKING);
     imagens_carregar(&jogo.imagens);
     jogo.camera.offset = (Vector2){ LARGURA_JANELA / 2.0f, ALTURA_JANELA / 2.0f };
     jogo.camera.zoom = 1.0f;

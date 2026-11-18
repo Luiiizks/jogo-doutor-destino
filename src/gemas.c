@@ -35,6 +35,7 @@ void gemas_criar_das_mortes(Partida *partida)
     for (indice = 0; indice < qtd_mortes; indice++) {
         int chance = mortes[indice].elite ? CHANCE_DROP_ELITE : CHANCE_DROP_COMUM;
 
+        partida->pontos_abates += mortes[indice].xp * PONTOS_POR_XP;   /* pontuação do abate */
         if (mortes[indice].xp > 0) {
             adicionar_drop(partida, mortes[indice].posicao, DROP_XP, mortes[indice].xp);
         }

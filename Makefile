@@ -26,14 +26,18 @@ debug: $(FONTES) $(wildcard src/*.h)
 		$(RAYLIB_CFLAGS) $(FONTES) -o $(NOME_JOGO)_debug $(RAYLIB_LIBS) -lm
 	./$(NOME_JOGO)_debug
 
-# Testes da lista e do cenário em console (não usa a raylib)
-test: tests/teste_lista.c tests/teste_cenario.c src/lista_inimigos.c src/cenario.c
+# Testes da lista, do cenário e do ranking em console (não usa a raylib)
+test: tests/teste_lista.c tests/teste_cenario.c tests/teste_ranking.c \
+		src/lista_inimigos.c src/cenario.c src/ranking.c
 	$(CC) -std=c11 -Wall -Wextra -Wpedantic -g -fsanitize=address,undefined \
 		tests/teste_lista.c src/lista_inimigos.c -o teste_lista -lm
 	./teste_lista
 	$(CC) -std=c11 -Wall -Wextra -Wpedantic -g -fsanitize=address,undefined \
 		tests/teste_cenario.c src/cenario.c -o teste_cenario -lm
 	./teste_cenario
+	$(CC) -std=c11 -Wall -Wextra -Wpedantic -g -fsanitize=address,undefined \
+		tests/teste_ranking.c src/ranking.c -o teste_ranking
+	./teste_ranking
 
 # Pacote de entrega: somente o necessário para reproduzir o jogo
 zip:
@@ -41,7 +45,7 @@ zip:
 	zip -r entrega.zip src assets Makefile README.md -x "*.DS_Store"
 
 clean:
-	rm -f $(NOME_JOGO) $(NOME_JOGO)_debug teste_lista teste_cenario entrega.zip
+	rm -f $(NOME_JOGO) $(NOME_JOGO)_debug teste_lista teste_cenario teste_ranking entrega.zip
 	rm -rf *.dSYM
 
 .PHONY: run debug test zip clean
